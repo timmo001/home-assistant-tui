@@ -84,10 +84,7 @@ export abstract class ConnectedView {
     this.theme = theme;
     this.strings = strings;
     this.callbacks = options;
-    this.titleParts = [
-      options.rootTitle ?? strings.app.name,
-      config.viewTitle,
-    ];
+    this.titleParts = [options.rootTitle ?? strings.app.name, config.viewTitle];
 
     this.help = this.buildHelp();
 

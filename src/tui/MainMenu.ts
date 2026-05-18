@@ -1,8 +1,4 @@
-import {
-  type CliRenderer,
-  BoxRenderable,
-  TextRenderable,
-} from "@opentui/core";
+import { type CliRenderer, BoxRenderable, TextRenderable } from "@opentui/core";
 import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";

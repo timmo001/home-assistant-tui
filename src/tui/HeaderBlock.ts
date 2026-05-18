@@ -63,7 +63,12 @@ export class HeaderBlock {
     // Text header bar — breadcrumb + connection status
     this.headerBar = new TextRenderable(renderer, {
       id: `${options.id}-header`,
-      content: formatHeaderBar(theme, strings, options.info, options.titleParts),
+      content: formatHeaderBar(
+        theme,
+        strings,
+        options.info,
+        options.titleParts,
+      ),
       marginTop: 1,
       marginBottom: 1,
     });

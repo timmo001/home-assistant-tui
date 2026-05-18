@@ -1,10 +1,4 @@
-import {
-  type CliRenderer,
-  type KeyEvent,
-  t,
-  fg,
-  dim,
-} from "@opentui/core";
+import { type CliRenderer, type KeyEvent, t, fg, dim } from "@opentui/core";
 import {
   subscribeEntities,
   type UnsubscribeFunc,
@@ -52,7 +46,12 @@ const PAGE_SIZE = 50;
 type GroupMode = "area" | "device" | "integration" | "domain";
 
 /** Cycle order for Ctrl+G */
-const GROUP_MODES: readonly GroupMode[] = ["area", "device", "integration", "domain"];
+const GROUP_MODES: readonly GroupMode[] = [
+  "area",
+  "device",
+  "integration",
+  "domain",
+];
 
 // ---------------------------------------------------------------------------
 
@@ -192,7 +191,9 @@ export class EntitiesView extends ConnectedView {
       if (localizeResult.status === "fulfilled") {
         this.localize = localizeResult.value;
       } else {
-        log(`Failed to fetch state translations: ${String(localizeResult.reason)}`);
+        log(
+          `Failed to fetch state translations: ${String(localizeResult.reason)}`,
+        );
       }
 
       if (deviceResult.status === "fulfilled") {
@@ -210,7 +211,9 @@ export class EntitiesView extends ConnectedView {
       }
 
       if (registryResult.status === "rejected") {
-        log(`Failed to fetch entity registry: ${String(registryResult.reason)}`);
+        log(
+          `Failed to fetch entity registry: ${String(registryResult.reason)}`,
+        );
         this.showStatus("Failed to load entity registry");
         return;
       }
@@ -337,7 +340,9 @@ export class EntitiesView extends ConnectedView {
     const description = descParts.join(" · ");
 
     // Resolve device and area for grouping
-    const device = entry.device_id ? this.deviceMap.get(entry.device_id) : undefined;
+    const device = entry.device_id
+      ? this.deviceMap.get(entry.device_id)
+      : undefined;
     const deviceName = device ? computeDeviceName(device) : "";
 
     // Area: prefer entity's area_id, fall back to device's area_id
@@ -402,28 +407,30 @@ export class EntitiesView extends ConnectedView {
       s.ungrouped.integration,
     ]);
 
-    const grouped = items.map((item, index): SearchableMenuItem & { _rank: number } => {
-      let group: string;
-      switch (this.groupMode) {
-        case "area":
-          group = item.areaName || s.ungrouped.area;
-          break;
-        case "device":
-          group = item.deviceName || s.ungrouped.device;
-          break;
-        case "integration":
-          group = item.integrationName || s.ungrouped.integration;
-          break;
-        case "domain":
-          // Capitalize domain: "light" → "Light", "binary_sensor" → "Binary sensor"
-          group = item.domain
-            ? item.domain.charAt(0).toUpperCase() +
-              item.domain.slice(1).replace(/_/g, " ")
-            : s.ungrouped.domain;
-          break;
-      }
-      return { ...item, group, _rank: index };
-    });
+    const grouped = items.map(
+      (item, index): SearchableMenuItem & { _rank: number } => {
+        let group: string;
+        switch (this.groupMode) {
+          case "area":
+            group = item.areaName || s.ungrouped.area;
+            break;
+          case "device":
+            group = item.deviceName || s.ungrouped.device;
+            break;
+          case "integration":
+            group = item.integrationName || s.ungrouped.integration;
+            break;
+          case "domain":
+            // Capitalize domain: "light" → "Light", "binary_sensor" → "Binary sensor"
+            group = item.domain
+              ? item.domain.charAt(0).toUpperCase() +
+                item.domain.slice(1).replace(/_/g, " ")
+              : s.ungrouped.domain;
+            break;
+        }
+        return { ...item, group, _rank: index };
+      },
+    );
 
     // Sort: groups alphabetically, ungrouped to bottom
     grouped.sort((a, b) => {
@@ -456,7 +463,9 @@ export class EntitiesView extends ConnectedView {
         (item) => item.searchFields,
         FUSE_KEYS,
       );
-      this.filteredItems = this.applyGrouping(searchResults, { preserveOrder: true });
+      this.filteredItems = this.applyGrouping(searchResults, {
+        preserveOrder: true,
+      });
     }
 
     this.hideStatus();
@@ -486,9 +495,7 @@ export class EntitiesView extends ConnectedView {
   private updateFilterBar(filter: string): void {
     const modeLabel = this.groupModeLabel();
     const pageInfo = this.pageInfoText;
-    const suffix = pageInfo
-      ? `${modeLabel}  ${pageInfo}`
-      : modeLabel;
+    const suffix = pageInfo ? `${modeLabel}  ${pageInfo}` : modeLabel;
     if (filter.length === 0) {
       this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {

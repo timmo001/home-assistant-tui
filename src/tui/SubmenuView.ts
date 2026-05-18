@@ -1,8 +1,4 @@
-import {
-  type CliRenderer,
-  BoxRenderable,
-  TextRenderable,
-} from "@opentui/core";
+import { type CliRenderer, BoxRenderable, TextRenderable } from "@opentui/core";
 import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
@@ -233,7 +229,9 @@ export class SubmenuView {
     }
 
     if (this.currentMenuId) {
-      const title = this.callbacks.submenuTitles.get(this.currentMenuId) ?? this.currentMenuId;
+      const title =
+        this.callbacks.submenuTitles.get(this.currentMenuId) ??
+        this.currentMenuId;
       if (parts[parts.length - 1] !== title) {
         parts.push(title);
       }

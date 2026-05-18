@@ -60,9 +60,7 @@ export interface AppDeps {
  * Allows the entry point to persist config and (re)connect.
  * Rejects if save or reconnect fails (form stays open with error feedback).
  */
-export type OnConnectionSaved = (
-  values: ConnectionFormValues,
-) => Promise<void>;
+export type OnConnectionSaved = (values: ConnectionFormValues) => Promise<void>;
 
 /** Top-level TUI application shell managing a view stack and global keyboard */
 export class App {

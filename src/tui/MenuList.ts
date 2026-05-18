@@ -606,7 +606,8 @@ export class MenuList extends ScrollBoxRenderable {
       // Restore selection if item still exists
       if (currentItemId) {
         const restoredIdx = this._rows.findIndex(
-          (r) => !r.isGroupHeader && !r.isSentinel && r.item.id === currentItemId,
+          (r) =>
+            !r.isGroupHeader && !r.isSentinel && r.item.id === currentItemId,
         );
         if (restoredIdx >= 0) this._applySelection(restoredIdx);
       }
@@ -718,7 +719,10 @@ export class MenuList extends ScrollBoxRenderable {
     }
 
     // Ensure initial selection is on a selectable row
-    if (this._rows.length > 0 && this._rows[this._selectedIndex]?.isGroupHeader) {
+    if (
+      this._rows.length > 0 &&
+      this._rows[this._selectedIndex]?.isGroupHeader
+    ) {
       this._selectedIndex = this._nextSelectableIndex(this._selectedIndex, 1);
     }
   }

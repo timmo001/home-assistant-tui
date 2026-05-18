@@ -23,7 +23,13 @@ export interface ConnectionInfo {
 // --- Menu types ---
 
 /** Identifies a top-level TUI view for navigation */
-export type ViewId = "main" | "submenu" | "setup" | "dashboard" | "entities" | "areaEntities";
+export type ViewId =
+  | "main"
+  | "submenu"
+  | "setup"
+  | "dashboard"
+  | "entities"
+  | "areaEntities";
 
 /** Action that suspends the TUI and runs a command with inherited stdio */
 export interface CommandAction {

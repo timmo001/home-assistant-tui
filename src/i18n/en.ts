@@ -101,9 +101,15 @@ export const en: Locale = {
       description: "Overview of your Home Assistant instance",
       title: "Dashboard",
     },
-    entities: { description: "Browse and search all entities", title: "Entities" },
+    entities: {
+      description: "Browse and search all entities",
+      title: "Entities",
+    },
     quit: { description: "Exit the application", title: "Quit" },
-    settings: { description: "Configure connection and preferences", title: "Settings" },
+    settings: {
+      description: "Configure connection and preferences",
+      title: "Settings",
+    },
     settingsTitle: "Settings",
   },
 

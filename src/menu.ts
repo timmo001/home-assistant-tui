@@ -69,7 +69,15 @@ export function buildMenu(locale: Locale): MenuRegistry {
       locale.menu.settings.description,
       submenu("settings"),
       undefined,
-      ["config", "preferences", "options", ":set", "prefs", "cfg", "connection"],
+      [
+        "config",
+        "preferences",
+        "options",
+        ":set",
+        "prefs",
+        "cfg",
+        "connection",
+      ],
     ),
 
     item(

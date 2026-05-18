@@ -78,7 +78,9 @@ export class DashboardView extends ConnectedView {
   private areas: AreaRegistryEntry[] = [];
   private entityRegistry: EntityRegistryEntry[] = [];
   private deviceMap: Map<string, DeviceRegistryEntry> = new Map();
-  private onAreaSelect: ((areaId: string, areaName: string) => void) | undefined;
+  private onAreaSelect:
+    | ((areaId: string, areaName: string) => void)
+    | undefined;
 
   // Relative-time refresh timer (only runs when visible)
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -175,13 +177,19 @@ export class DashboardView extends ConnectedView {
       if (entityRegistryResult.status === "fulfilled") {
         this.entityRegistry = entityRegistryResult.value;
       } else {
-        log(`Failed to fetch entity registry: ${String(entityRegistryResult.reason)}`);
+        log(
+          `Failed to fetch entity registry: ${String(entityRegistryResult.reason)}`,
+        );
       }
 
       if (deviceRegistryResult.status === "fulfilled") {
-        this.deviceMap = new Map(deviceRegistryResult.value.map((d) => [d.id, d]));
+        this.deviceMap = new Map(
+          deviceRegistryResult.value.map((d) => [d.id, d]),
+        );
       } else {
-        log(`Failed to fetch device registry: ${String(deviceRegistryResult.reason)}`);
+        log(
+          `Failed to fetch device registry: ${String(deviceRegistryResult.reason)}`,
+        );
       }
 
       const favorites =
@@ -383,7 +391,9 @@ export class DashboardView extends ConnectedView {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const area of sortedAreas) {
-      const icon = area.icon ? (mdiToNerdFont(area.icon) ?? DEFAULT_ICON) : DEFAULT_ICON;
+      const icon = area.icon
+        ? (mdiToNerdFont(area.icon) ?? DEFAULT_ICON)
+        : DEFAULT_ICON;
       items.push({
         id: `area:${area.area_id}`,
         icon,
