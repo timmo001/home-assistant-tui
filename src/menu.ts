@@ -45,7 +45,7 @@ const mainItems: readonly MenuItem[] = [
 
   item(
     "settings",
-    "",
+    "󰒓",
     "Settings",
     "Configure connection and preferences",
     submenu("settings"),
