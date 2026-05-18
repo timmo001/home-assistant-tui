@@ -24,6 +24,8 @@ export interface AppOptions {
   readonly executeItemId?: string;
   /** Title displayed at the top of the main menu */
   readonly title?: string;
+  /** Pre-fill the connection form with these values (Settings > Connection re-edit flow) */
+  readonly initialConnectionValues?: Partial<ConnectionFormValues>;
 }
 
 /** Dependencies injected into the App at construction time */
@@ -53,6 +55,7 @@ export class App {
   private activeView: ViewId = "main";
   private viewStack: ViewId[] = [];
   private appTitle: string;
+  private connectionValues: Partial<ConnectionFormValues>;
 
   constructor(
     deps: AppDeps,
@@ -62,6 +65,7 @@ export class App {
     this.renderer = deps.renderer;
     this.commandRunner = deps.commandRunner;
     this.appTitle = options.title ?? "Home Assistant TUI";
+    this.connectionValues = options.initialConnectionValues ?? {};
 
     // --- Create views ---
 
@@ -94,6 +98,7 @@ export class App {
     this.connectionForm = new ConnectionForm(deps.renderer, deps.theme, {
       onSubmit: (values) => {
         log("Connection form submitted — saving config");
+        this.connectionValues = values;
         onConnectionSaved?.(values);
         this.popView();
       },
@@ -219,6 +224,7 @@ export class App {
         break;
       case "setup":
         setTerminalTitle(`${this.appTitle} — Setup`);
+        this.connectionForm.setValues(this.connectionValues);
         this.connectionForm.setVisible(true);
         this.connectionForm.resetAndFocus();
         break;

@@ -132,7 +132,7 @@ export class ConnectionForm {
     // Help bar
     const helpEntries: HelpEntry[] = [
       { key: "Tab", action: "next field" },
-      { key: "Enter", action: "advance / save" },
+      { key: "Enter", action: "save" },
       ...(options.onCancel ? [{ key: "Esc", action: "cancel" } as HelpEntry] : []),
     ];
     this.helpBar = new TextRenderable(renderer, {
@@ -173,6 +173,19 @@ export class ConnectionForm {
     this.updateLabels();
   }
 
+  /**
+   * Update the form fields with new values without changing focus state.
+   * Used by Settings > Connection to pre-fill the form with the saved config.
+   */
+  setValues(values: Partial<ConnectionFormValues>): void {
+    if (values.url !== undefined) {
+      this.urlInput.value = values.url.trim() || DEFAULT_HA_URL;
+    }
+    if (values.token !== undefined) {
+      this.tokenInput.value = values.token;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Keyboard handling (called by App when this view is active)
 
@@ -189,13 +202,7 @@ export class ConnectionForm {
     }
 
     if (key.name === "return") {
-      if (this.activeField === "url") {
-        // Advance to token field
-        this.cycleField("forward");
-      } else {
-        // Submit from the token field
-        this.submit();
-      }
+      this.submit();
       return true;
     }
 
