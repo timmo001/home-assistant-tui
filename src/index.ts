@@ -22,6 +22,10 @@ if (flags.help) {
 
 // Special diagnostic subcommand — runs without the TUI and exits
 if (flags.subcommand === "test-connection") {
+  process.on("SIGINT", () => {
+    process.stdout.write("\nCancelled.\n");
+    process.exit(0);
+  });
   Effect.runPromise(runTestConnection).catch((err) => {
     console.error(err);
     process.exit(1);

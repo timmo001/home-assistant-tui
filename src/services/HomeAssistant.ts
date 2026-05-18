@@ -98,6 +98,10 @@ function makeHomeAssistantService(
       return;
     }
 
+    // createConnection resolves after auth completes — "ready" has already fired.
+    // Call onReady() directly for the initial connect, then keep the listener
+    // for subsequent reconnects (ha-js-websocket re-emits "ready" after each).
+    void onReady();
     connection.addEventListener("ready", () => {
       void onReady();
     });
