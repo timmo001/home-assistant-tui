@@ -25,6 +25,12 @@ bun install
 bun run dev
 ```
 
+For the same checks used in CI:
+
+```sh
+make ci
+```
+
 On first launch, a setup form prompts for your Home Assistant URL and a [long-lived access token](https://www.home-assistant.io/docs/authentication/#your-account-profile). Config is saved to `~/.local/share/home-assistant-tui/config.yml`.
 
 ## Build
@@ -41,11 +47,22 @@ bun run build
 ```sh
 bun run dev          # Run with --watch for development
 bun run build        # Compile to standalone binary at dist/home-assistant-tui
+bun run typecheck    # Typecheck with tsc
+bun run ci           # Format check, typecheck, and build
 bun run gen:icons    # Regenerate MDI→Nerd Font codepoint map
 bun run format       # Format with Prettier
 bun run format:check # Check formatting
-bunx tsc --noEmit    # Typecheck
+make create_arch     # Build an Arch Linux package in dist/
 ```
+
+## Packaging
+
+This repo includes the same maintenance pieces used in `go-automate`, adapted for a Bun-only project:
+
+- `Makefile` targets for local CI and packaging
+- `.github/workflows/ci.yml` for build verification on PRs and `main`
+- `.github/workflows/update-aur.yml` for publishing `home-assistant-tui-git`
+- `.scripts/linux/` Arch packaging helpers for both source and prebuilt-binary packages
 
 ## Configuration
 

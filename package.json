@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build src/index.ts --compile --outfile dist/home-assistant-tui",
+    "typecheck": "tsc --noEmit",
+    "ci": "bun run format:check && bun run typecheck && bun run build",
     "gen:icons": "bun run scripts/gen-mdi-codepoints.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\""
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.13",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "typescript": "^5.9.3"
   }
 }
