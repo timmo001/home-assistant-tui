@@ -2,8 +2,7 @@ import { StyledText, fg, bold } from "@opentui/core";
 import type { TextChunk } from "@opentui/core";
 import type { Theme } from "../theme.js";
 import type { ConnectionInfo, ConnectionStatus } from "../types.js";
-
-const APP_NAME = "Home Assistant TUI";
+import type { Locale } from "../i18n/index.js";
 
 /** Status indicator characters and their associated colours */
 const STATUS_DOT: Record<ConnectionStatus, string> = {
@@ -26,23 +25,24 @@ const STATUS_DOT: Record<ConnectionStatus, string> = {
  */
 export function formatHeaderBar(
   theme: Theme,
+  strings: Locale,
   info: ConnectionInfo,
 ): StyledText {
   const chunks: TextChunk[] = [];
   const columns = process.stdout.columns || 80;
 
   // App name (always shown)
-  chunks.push(bold(fg(theme.accent)(APP_NAME)));
+  chunks.push(bold(fg(theme.accent)(strings.app.name)));
 
   // Status dot + label
   const dotColor = statusColor(theme, info.status);
   const dotChar = STATUS_DOT[info.status];
-  const statusLabel = statusLabel_(info);
+  const label = statusLabel(strings, info);
 
   chunks.push(fg(theme.fgSubtle)("   "));
   chunks.push(fg(dotColor)(dotChar));
   chunks.push(fg(theme.fgSubtle)(" "));
-  chunks.push(fg(dotColor)(statusLabel));
+  chunks.push(fg(dotColor)(label));
 
   // Build the right-side metadata string progressively
   const rightParts: TextChunk[] = [];
@@ -63,9 +63,9 @@ export function formatHeaderBar(
   }
 
   if (info.lastUpdateAt) {
-    const ago = formatAgo(info.lastUpdateAt);
+    const ago = formatAgo(strings, info.lastUpdateAt);
     rightParts.push(fg(theme.fgSubtle)("   "));
-    rightParts.push(fg(theme.fgMuted)(`Updated ${ago}`));
+    rightParts.push(fg(theme.fgMuted)(strings.status.updatedAgo(ago)));
   }
 
   if (info.errorMessage && info.status === "error") {
@@ -75,7 +75,7 @@ export function formatHeaderBar(
 
   // Calculate approximate plain-text width before adding right parts
   const leftWidth =
-    APP_NAME.length + 3 + dotChar.length + 1 + statusLabel.length;
+    strings.app.name.length + 3 + dotChar.length + 1 + label.length;
 
   let usedWidth = leftWidth;
   for (const part of rightParts) {
@@ -102,26 +102,26 @@ function statusColor(theme: Theme, status: ConnectionStatus): string {
   }
 }
 
-function statusLabel_(info: ConnectionInfo): string {
+function statusLabel(strings: Locale, info: ConnectionInfo): string {
   switch (info.status) {
     case "connected":
-      return "Connected";
+      return strings.status.connected;
     case "connecting":
-      return "Connecting";
+      return strings.status.connecting;
     case "disconnected":
-      return "Disconnected";
+      return strings.status.disconnected;
     case "error":
-      return "Error";
+      return strings.status.error;
   }
 }
 
-function formatAgo(date: Date): string {
+function formatAgo(strings: Locale, date: Date): string {
   const secs = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (secs < 5) return "just now";
-  if (secs < 60) return `${secs}s ago`;
+  if (secs < 5) return strings.status.justNow;
+  if (secs < 60) return strings.status.secondsAgo(secs);
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ago`;
+  if (mins < 60) return strings.status.minutesAgo(mins);
+  return strings.status.hoursAgo(Math.floor(mins / 60));
 }
 
 /** Extract plain-text content from a TextChunk for width calculations */

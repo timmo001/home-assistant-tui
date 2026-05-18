@@ -12,6 +12,7 @@ import {
 } from "@opentui/core";
 import type { MenuAction, MenuItem, MenuVariant } from "../types.js";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 
 /** Width of the popup box in characters */
 const POPUP_WIDTH = 50;
@@ -46,6 +47,7 @@ export class VariantPopup {
   constructor(
     renderer: CliRenderer,
     theme: Theme,
+    strings: Locale,
     options: VariantPopupOptions,
   ) {
     this.renderer = renderer;
@@ -121,7 +123,7 @@ export class VariantPopup {
     // Help text at the bottom
     this.helpText = new TextRenderable(renderer, {
       id: "variant-popup-help",
-      content: t`${dim("↑↓")} ${dim("navigate")}  ${dim("Enter")} ${dim("select")}  ${dim("Esc")} ${dim("cancel")}`,
+      content: t`${dim(strings.keys.arrowsUD)} ${dim(strings.help.navigate)}  ${dim(strings.keys.enter)} ${dim(strings.help.select)}  ${dim(strings.keys.esc)} ${dim(strings.help.cancel)}`,
     });
     this.root.add(this.helpText);
 

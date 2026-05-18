@@ -8,21 +8,12 @@ import {
 import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 import { submenus, submenuTitles } from "../menu.js";
 import { formatBreadcrumb } from "./breadcrumb.js";
-import { formatHelpBar, GLOBAL_HELP, type HelpEntry } from "./helpBar.js";
+import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
-
-/** Help entries for submenu views */
-const HELP: readonly HelpEntry[] = [
-  { key: "↑↓", action: "navigate" },
-  { key: "Enter", action: "select" },
-  { key: "type", action: "filter" },
-  { key: "Esc", action: "back" },
-  { key: "Backspace", action: "back" },
-  ...GLOBAL_HELP,
-];
 
 /** Configuration callbacks for the submenu view */
 export interface SubmenuViewOptions {
@@ -46,6 +37,7 @@ export interface SubmenuViewOptions {
 export class SubmenuView {
   private renderer: CliRenderer;
   private theme: Theme;
+  private strings: Locale;
   private callbacks: SubmenuViewOptions;
 
   private root: BoxRenderable;
@@ -54,6 +46,7 @@ export class SubmenuView {
   private filterBar: TextRenderable;
   private menuList: MenuList;
   private helpBar: TextRenderable;
+  private help: readonly HelpEntry[];
 
   /** Stack of submenu IDs for nested navigation */
   private menuStack: string[] = [];
@@ -63,12 +56,23 @@ export class SubmenuView {
   constructor(
     renderer: CliRenderer,
     theme: Theme,
+    strings: Locale,
     options: SubmenuViewOptions,
   ) {
     this.renderer = renderer;
     this.theme = theme;
+    this.strings = strings;
     this.callbacks = options;
-    this.rootTitle = options.rootTitle ?? "Menu";
+    this.rootTitle = options.rootTitle ?? strings.app.menuFallbackTitle;
+
+    this.help = [
+      { key: strings.keys.arrowsUD, action: strings.help.navigate },
+      { key: strings.keys.enter, action: strings.help.select },
+      { key: strings.keys.typeInput, action: strings.help.filter },
+      { key: strings.keys.esc, action: strings.help.back },
+      { key: strings.keys.backspace, action: strings.help.back },
+      ...globalHelp(strings),
+    ];
 
     this.root = new BoxRenderable(renderer, {
       id: "submenu-root",
@@ -85,7 +89,7 @@ export class SubmenuView {
     };
     this.headerBar = new TextRenderable(renderer, {
       id: "submenu-header",
-      content: formatHeaderBar(theme, disconnectedInfo),
+      content: formatHeaderBar(theme, strings, disconnectedInfo),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
@@ -113,7 +117,7 @@ export class SubmenuView {
     // Help bar
     this.helpBar = new TextRenderable(renderer, {
       id: "submenu-help",
-      content: formatHelpBar(theme, HELP),
+      content: formatHelpBar(theme, this.help),
       marginTop: 1,
     });
     this.root.add(this.helpBar);
@@ -122,13 +126,13 @@ export class SubmenuView {
 
     // Re-wrap help bar on terminal resize
     renderer.on("resize", () => {
-      this.helpBar.content = formatHelpBar(this.theme, HELP);
+      this.helpBar.content = formatHelpBar(this.theme, this.help);
     });
   }
 
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
-    this.headerBar.content = formatHeaderBar(this.theme, info);
+    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info);
   }
 
   /** Open a submenu as the root level (resets the navigation stack) */

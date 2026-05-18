@@ -2,6 +2,7 @@ import type { CliRenderer } from "@opentui/core";
 import { Context, Layer, Effect } from "effect";
 import type { NotifyConfig } from "../types.js";
 import type { Toast } from "../tui/Toast.js";
+import type { Locale } from "../i18n/index.js";
 
 const log = (msg: string) => console.error(`[ha-tui:CommandRunner] ${msg}`);
 
@@ -22,7 +23,11 @@ export interface CommandRunnerI {
 /** Backward-compat alias so App.ts import does not change */
 export type CommandRunnerService = CommandRunnerI;
 
-function makeCommandRunner(renderer: CliRenderer, toast: Toast): CommandRunnerI {
+function makeCommandRunner(
+  renderer: CliRenderer,
+  toast: Toast,
+  strings: Locale,
+): CommandRunnerI {
   return {
     runSuspended: (cmd, wait) =>
       Effect.promise(async () => {
@@ -55,7 +60,7 @@ function makeCommandRunner(renderer: CliRenderer, toast: Toast): CommandRunnerI 
 
           if (wait) {
             process.stdout.write(
-              "\n\x1b[90mPress any key to continue...\x1b[0m",
+              `\n\x1b[90m${strings.commands.pressAnyKey}\x1b[0m`,
             );
             await new Promise<void>((resolve) => {
               const wasRaw = process.stdin.isRaw;
@@ -106,7 +111,8 @@ function makeCommandRunner(renderer: CliRenderer, toast: Toast): CommandRunnerI 
 
         if (exitCode !== 0) {
           const stderr = await new Response(proc.stderr).text();
-          const errMsg = stderr.trim().split("\n")[0] || "Command failed";
+          const errMsg =
+            stderr.trim().split("\n")[0] || strings.commands.commandFailed;
           log(`Notify command failed (exit ${exitCode}): ${stderr}`);
           toast.show(notify.id, errMsg, "error");
         } else {
@@ -124,10 +130,11 @@ export class CommandRunner extends Context.Service<
   static layer(
     renderer: CliRenderer,
     toast: Toast,
+    strings: Locale,
   ): Layer.Layer<CommandRunner> {
     return Layer.effect(
       CommandRunner,
-      Effect.sync(() => makeCommandRunner(renderer, toast)),
+      Effect.sync(() => makeCommandRunner(renderer, toast, strings)),
     );
   }
 }

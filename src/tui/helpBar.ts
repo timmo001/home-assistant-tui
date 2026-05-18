@@ -1,6 +1,7 @@
 import { StyledText, fg } from "@opentui/core";
 import type { TextChunk } from "@opentui/core";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 
 /** A key-action pair displayed in a help bar */
 export interface HelpEntry {
@@ -11,9 +12,9 @@ export interface HelpEntry {
 }
 
 /** Global help entries appended to every view's help bar */
-export const GLOBAL_HELP: readonly HelpEntry[] = [
-  { key: "Ctrl+c", action: "quit" },
-];
+export function globalHelp(strings: Locale): readonly HelpEntry[] {
+  return [{ key: strings.keys.ctrlC, action: strings.help.quit }];
+}
 
 /** Separator between key-action pairs (visible width) */
 const SEPARATOR = "   ";

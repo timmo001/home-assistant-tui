@@ -1,4 +1,5 @@
 import type { MenuItem, MenuVariant, NotifyConfig, ViewId } from "./types.js";
+import { en } from "./i18n/en.js";
 
 // --- Helpers ---
 
@@ -36,8 +37,8 @@ const mainItems: readonly MenuItem[] = [
   item(
     "dashboard",
     "󰋜",
-    "Dashboard",
-    "Overview of your Home Assistant instance",
+    en.menu.dashboard.title,
+    en.menu.dashboard.description,
     noop(),
     undefined,
     ["home", "overview", "main", ":dash", ":home"],
@@ -46,14 +47,14 @@ const mainItems: readonly MenuItem[] = [
   item(
     "settings",
     "󰒓",
-    "Settings",
-    "Configure connection and preferences",
+    en.menu.settings.title,
+    en.menu.settings.description,
     submenu("settings"),
     undefined,
     ["config", "preferences", "options", ":set", "prefs", "cfg", "connection"],
   ),
 
-  item("quit", "󰩈", "Quit", "Exit the application", { type: "quit" }, undefined, [
+  item("quit", "󰩈", en.menu.quit.title, en.menu.quit.description, { type: "quit" }, undefined, [
     ":q",
     ":wq",
     ":qa",
@@ -70,8 +71,8 @@ const settingsItems: readonly MenuItem[] = [
   item(
     "settings.connection",
     "󰌿",
-    "Connection",
-    "Change Home Assistant URL or access token",
+    en.menu.connection.title,
+    en.menu.connection.description,
     { type: "view", viewId: "setup" },
     undefined,
     ["url", "token", "auth", "host", ":conn", "ha", "server"],
@@ -90,7 +91,7 @@ export const submenus: Map<string, readonly MenuItem[]> = new Map([
 
 /** Display titles for submenu breadcrumbs */
 export const submenuTitles: Map<string, string> = new Map([
-  ["settings", "Settings"],
+  ["settings", en.menu.settingsTitle],
 ]);
 
 /** Flat map of every menu item by its ID (main items + all submenu items) */

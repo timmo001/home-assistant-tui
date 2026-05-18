@@ -9,6 +9,7 @@ import {
   fg,
 } from "@opentui/core";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 import { DEFAULT_HA_URL } from "../config.js";
 import { formatHelpBar, type HelpEntry } from "./helpBar.js";
 
@@ -57,13 +58,16 @@ export class ConnectionForm {
   private activeField: FieldName = "url";
   private callbacks: ConnectionFormOptions;
   private theme: Theme;
+  private strings: Locale;
 
   constructor(
     renderer: CliRenderer,
     theme: Theme,
+    strings: Locale,
     options: ConnectionFormOptions,
   ) {
     this.theme = theme;
+    this.strings = strings;
     this.callbacks = options;
 
     const initialUrl =
@@ -82,7 +86,7 @@ export class ConnectionForm {
     // Title
     const titleText = new TextRenderable(renderer, {
       id: "conn-form-title",
-      content: t`${bold(fg(theme.accent)("Connection Setup"))}${fg(theme.fgMuted)(" — enter your Home Assistant URL and access token")}`,
+      content: t`${bold(fg(theme.accent)(strings.connectionForm.title))}${fg(theme.fgMuted)(strings.connectionForm.subtitle)}`,
       marginBottom: 2,
     });
     this.root.add(titleText);
@@ -90,7 +94,7 @@ export class ConnectionForm {
     // URL field
     this.urlLabel = new TextRenderable(renderer, {
       id: "conn-form-url-label",
-      content: this.fieldLabel("url", "url"),
+      content: this.fieldLabel("url"),
       marginBottom: 0,
     });
     this.root.add(this.urlLabel);
@@ -111,7 +115,7 @@ export class ConnectionForm {
     // Token field
     this.tokenLabel = new TextRenderable(renderer, {
       id: "conn-form-token-label",
-      content: this.fieldLabel("token", "token"),
+      content: this.fieldLabel("token"),
       marginBottom: 0,
     });
     this.root.add(this.tokenLabel);
@@ -119,7 +123,7 @@ export class ConnectionForm {
     this.tokenInput = new InputRenderable(renderer, {
       id: "conn-form-token-input",
       value: initialToken,
-      placeholder: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      placeholder: strings.connectionForm.tokenPlaceholder,
       backgroundColor: theme.bgInput,
       textColor: theme.fg,
       focusedBackgroundColor: theme.bgSelected,
@@ -131,9 +135,11 @@ export class ConnectionForm {
 
     // Help bar
     const helpEntries: HelpEntry[] = [
-      { key: "Tab", action: "next field" },
-      { key: "Enter", action: "save" },
-      ...(options.onCancel ? [{ key: "Esc", action: "cancel" } as HelpEntry] : []),
+      { key: strings.keys.tab, action: strings.connectionForm.helpNextField },
+      { key: strings.keys.enter, action: strings.connectionForm.helpSave },
+      ...(options.onCancel
+        ? [{ key: strings.keys.esc, action: strings.connectionForm.helpCancel } as HelpEntry]
+        : []),
     ];
     this.helpBar = new TextRenderable(renderer, {
       id: "conn-form-help",
@@ -173,10 +179,7 @@ export class ConnectionForm {
     this.updateLabels();
   }
 
-  /**
-   * Update the form fields with new values without changing focus state.
-   * Used by Settings > Connection to pre-fill the form with the saved config.
-   */
+  /** Pre-fill the form with the given values without resetting focus. */
   setValues(values: Partial<ConnectionFormValues>): void {
     if (values.url !== undefined) {
       this.urlInput.value = values.url.trim() || DEFAULT_HA_URL;
@@ -202,7 +205,13 @@ export class ConnectionForm {
     }
 
     if (key.name === "return") {
-      this.submit();
+      if (this.activeField === "url") {
+        // Advance to token field
+        this.cycleField("forward");
+      } else {
+        // Submit from the token field
+        this.submit();
+      }
       return true;
     }
 
@@ -248,18 +257,16 @@ export class ConnectionForm {
   }
 
   private updateLabels(): void {
-    this.urlLabel.content = this.fieldLabel(
-      "url",
-      "url",
-    );
-    this.tokenLabel.content = this.fieldLabel(
-      "token",
-      "token",
-    );
+    this.urlLabel.content = this.fieldLabel("url");
+    this.tokenLabel.content = this.fieldLabel("token");
   }
 
-  private fieldLabel(field: FieldName, label: string): ReturnType<typeof t> {
+  private fieldLabel(field: FieldName): ReturnType<typeof t> {
     const isActive = this.activeField === field;
+    const label =
+      field === "url"
+        ? this.strings.connectionForm.urlLabel
+        : this.strings.connectionForm.tokenLabel;
     return isActive
       ? t`${fg(this.theme.accent)(label)}`
       : t`${fg(this.theme.fgMuted)(label)}`;

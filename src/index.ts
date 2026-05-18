@@ -8,6 +8,7 @@ import { App } from "./tui/App.js";
 import { parseFlags, resolveSubcommand, printHelp } from "./flags.js";
 import { menuItemsById } from "./menu.js";
 import { loadConfig, saveConfig, isConfigured } from "./config.js";
+import { Strings } from "./i18n/index.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 
@@ -18,35 +19,36 @@ if (flags.help) {
   process.exit(0);
 }
 
-// Resolve subcommand to determine startup behaviour
-let executeItemId: string | undefined;
-
-if (flags.subcommand) {
-  const resolved = resolveSubcommand(flags.subcommand);
-  if (!resolved) {
-    console.error(`Unknown subcommand: ${flags.subcommand}`);
-    printHelp();
-    process.exit(1);
-  }
-
-  const item = menuItemsById.get(resolved.itemId);
-  if (item) {
-    const { action } = item;
-    if (
-      action.type === "command" ||
-      action.type === "silent" ||
-      action.type === "notify" ||
-      action.type === "submenu"
-    ) {
-      executeItemId = resolved.itemId;
-    }
-  }
-}
-
 const program = Effect.scoped(
   Effect.gen(function* () {
+    const strings = yield* Strings;
     const theme = yield* loadTheme;
     log("Starting...");
+
+    // Resolve subcommand to determine startup behaviour
+    let executeItemId: string | undefined;
+
+    if (flags.subcommand) {
+      const resolved = resolveSubcommand(flags.subcommand);
+      if (!resolved) {
+        console.error(strings.errors.unknownSubcommand(flags.subcommand));
+        printHelp();
+        process.exit(1);
+      }
+
+      const item = menuItemsById.get(resolved.itemId);
+      if (item) {
+        const { action } = item;
+        if (
+          action.type === "command" ||
+          action.type === "silent" ||
+          action.type === "notify" ||
+          action.type === "submenu"
+        ) {
+          executeItemId = resolved.itemId;
+        }
+      }
+    }
 
     const renderer = yield* Effect.promise(() =>
       createCliRenderer({
@@ -73,9 +75,8 @@ const program = Effect.scoped(
       const cr = yield* CommandRunner;
 
       const app = new App(
-        { renderer, theme, commandRunner: cr },
+        { renderer, theme, strings, commandRunner: cr },
         {
-          title: "Home Assistant TUI",
           executeItemId,
           initialView,
           initialConnectionValues: config.homeassistant,
@@ -115,8 +116,8 @@ const program = Effect.scoped(
     }).pipe(
       Effect.provide(
         Layer.merge(
-          HomeAssistantService.layer(config),
-          CommandRunner.layer(renderer, toast),
+          HomeAssistantService.layer(config, strings),
+          CommandRunner.layer(renderer, toast, strings),
         ),
       ),
     );

@@ -12,6 +12,7 @@ import type { Connection } from "home-assistant-js-websocket";
 import { Context, Layer, Effect } from "effect";
 import type { HaTuiConfig } from "../config.js";
 import type { ConnectionInfo, ConnectionStatus } from "../types.js";
+import type { Locale } from "../i18n/index.js";
 
 const log = (msg: string) => console.error(`[ha-tui:HomeAssistant] ${msg}`);
 
@@ -26,6 +27,7 @@ export interface HomeAssistantServiceI {
 
 function makeHomeAssistantService(
   initialConfig: HaTuiConfig,
+  strings: Locale,
 ): HomeAssistantServiceI {
   let config = initialConfig;
   let connection: Connection | null = null;
@@ -106,7 +108,7 @@ function makeHomeAssistantService(
 
     connection.addEventListener("reconnect-error", (_, err) => {
       log(`Reconnect error: ${err}`);
-      emit({ status: "error", errorMessage: "Reconnection failed" });
+      emit({ status: "error", errorMessage: strings.commands.reconnectionFailed });
     });
   });
 
@@ -144,10 +146,13 @@ export class HomeAssistantService extends Context.Service<
   HomeAssistantService,
   HomeAssistantServiceI
 >()("HomeAssistantService") {
-  static layer(config: HaTuiConfig): Layer.Layer<HomeAssistantService> {
+  static layer(
+    config: HaTuiConfig,
+    strings: Locale,
+  ): Layer.Layer<HomeAssistantService> {
     return Layer.effect(
       HomeAssistantService,
-      Effect.sync(() => makeHomeAssistantService(config)),
+      Effect.sync(() => makeHomeAssistantService(config, strings)),
     );
   }
 }

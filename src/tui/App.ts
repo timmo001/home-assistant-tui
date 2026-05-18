@@ -1,8 +1,9 @@
-import type { CliRenderer } from "@opentui/core";
 import { Effect } from "effect";
+import type { CliRenderer } from "@opentui/core";
 import type { ViewId, MenuItem, MenuAction } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 import { menuItemsById, submenus } from "../menu.js";
 import type { CommandRunnerService } from "../services/CommandRunner.js";
 import { MainMenu } from "./MainMenu.js";
@@ -35,6 +36,8 @@ export interface AppDeps {
   readonly renderer: CliRenderer;
   /** Active colour theme */
   readonly theme: Theme;
+  /** Active locale */
+  readonly strings: Locale;
   /** Service for running shell commands with suspend/resume */
   readonly commandRunner: CommandRunnerService;
 }
@@ -56,6 +59,7 @@ export class App {
   private activeView: ViewId = "main";
   private viewStack: ViewId[] = [];
   private appTitle: string;
+  private strings: Locale;
   private connectionValues: Partial<ConnectionFormValues>;
 
   constructor(
@@ -65,28 +69,29 @@ export class App {
   ) {
     this.renderer = deps.renderer;
     this.commandRunner = deps.commandRunner;
-    this.appTitle = options.title ?? "Home Assistant TUI";
+    this.strings = deps.strings;
+    this.appTitle = options.title ?? deps.strings.app.name;
     this.connectionValues = options.initialConnectionValues ?? {};
 
     // --- Create views ---
 
-    this.mainMenu = new MainMenu(deps.renderer, deps.theme, {
+    this.mainMenu = new MainMenu(deps.renderer, deps.theme, deps.strings, {
       onSelect: (item) => this.handleMenuAction(item),
       initialSelectedId: options.executeItemId,
       title: options.title,
     });
 
-    this.submenuView = new SubmenuView(deps.renderer, deps.theme, {
+    this.submenuView = new SubmenuView(deps.renderer, deps.theme, deps.strings, {
       onAction: (item) => this.handleMenuAction(item),
       onBack: () => this.popView(),
-      rootTitle: options.title ?? "Menu",
+      rootTitle: options.title ?? deps.strings.app.menuFallbackTitle,
       onTitleChange: (parts) => {
         const suffix = parts.slice(1).join(" \u203A ");
         setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
       },
     });
 
-    this.variantPopup = new VariantPopup(deps.renderer, deps.theme, {
+    this.variantPopup = new VariantPopup(deps.renderer, deps.theme, deps.strings, {
       onSelect: (action) => {
         queueMicrotask(() => this.focusActiveView());
         this.dispatchAction(action);
@@ -96,7 +101,7 @@ export class App {
       },
     });
 
-    this.connectionForm = new ConnectionForm(deps.renderer, deps.theme, {
+    this.connectionForm = new ConnectionForm(deps.renderer, deps.theme, deps.strings, {
       onSubmit: (values) => {
         log("Connection form submitted — saving config");
         this.connectionValues = values;
@@ -145,11 +150,14 @@ export class App {
           action.type === "notify"
         ) {
           setTimeout(() => {
-            Effect.runFork(
-              this.commandRunner.runSuspended(action.cmd, true).pipe(
-                Effect.ensuring(Effect.sync(() => deps.renderer.destroy())),
-              ),
-            );
+            Effect.runPromise(
+              this.commandRunner.runSuspended(action.cmd, true),
+            )
+              .then(() => deps.renderer.destroy())
+              .catch((err: unknown) => {
+                log(`Execute error: ${err}`);
+                deps.renderer.destroy();
+              });
           }, 50);
         } else {
           setTimeout(() => this.handleMenuAction(item), 50);
@@ -175,12 +183,6 @@ export class App {
     initialValues: ConnectionFormValues,
     onSaved: OnConnectionSaved,
   ): void {
-    // Re-create the form with the current values and a fresh onSubmit
-    // (simpler than a mutable callback — the form is cheap to recreate).
-    // For now we just push the setup view; App always uses the same form
-    // instance wired at construction.  The form already received `onSaved`
-    // via the constructor's `onConnectionSaved` param, so pushing "setup"
-    // is sufficient.
     void initialValues;
     void onSaved;
     this.pushView("setup");
@@ -222,7 +224,9 @@ export class App {
         this.submenuView.resetAndFocus();
         break;
       case "setup":
-        setTerminalTitle(`${this.appTitle} — Setup`);
+        setTerminalTitle(
+          `${this.appTitle} \u2014 ${this.strings.app.setupSuffix}`,
+        );
         this.connectionForm.setValues(this.connectionValues);
         this.connectionForm.setVisible(true);
         this.connectionForm.resetAndFocus();
@@ -250,15 +254,21 @@ export class App {
         break;
 
       case "command":
-        Effect.runFork(this.commandRunner.runSuspended(action.cmd, action.wait));
+        Effect.runPromise(
+          this.commandRunner.runSuspended(action.cmd, action.wait),
+        ).catch((err: unknown) => log(`Command error: ${err}`));
         break;
 
       case "silent":
-        Effect.runFork(this.commandRunner.runSilent(action.cmd));
+        Effect.runPromise(this.commandRunner.runSilent(action.cmd)).catch(
+          (err: unknown) => log(`Silent command error: ${err}`),
+        );
         break;
 
       case "notify":
-        Effect.runFork(this.commandRunner.runNotify(action.cmd, action.notify));
+        Effect.runPromise(
+          this.commandRunner.runNotify(action.cmd, action.notify),
+        ).catch((err: unknown) => log(`Notify command error: ${err}`));
         break;
 
       case "view":

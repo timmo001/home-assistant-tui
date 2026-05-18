@@ -9,20 +9,13 @@ import {
 import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
+import type { Locale } from "../i18n/index.js";
 import { mainMenuItems } from "../menu.js";
-import { formatHelpBar, GLOBAL_HELP, type HelpEntry } from "./helpBar.js";
+import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
 
 const log = (msg: string) => console.error(`[ha-tui:MainMenu] ${msg}`);
-
-/** Help entries for the main menu */
-const HELP: readonly HelpEntry[] = [
-  { key: "↑↓", action: "navigate" },
-  { key: "Enter", action: "select" },
-  { key: "type", action: "filter" },
-  ...GLOBAL_HELP,
-];
 
 /** Configuration callbacks for the main menu */
 export interface MainMenuOptions {
@@ -38,17 +31,32 @@ export interface MainMenuOptions {
 export class MainMenu {
   private renderer: CliRenderer;
   private theme: Theme;
+  private strings: Locale;
   private root: BoxRenderable;
   private menuList: MenuList;
   private filterBar: TextRenderable;
   private headerBar: TextRenderable;
   private helpBar: TextRenderable;
   private callbacks: MainMenuOptions;
+  private help: readonly HelpEntry[];
 
-  constructor(renderer: CliRenderer, theme: Theme, options: MainMenuOptions) {
+  constructor(
+    renderer: CliRenderer,
+    theme: Theme,
+    strings: Locale,
+    options: MainMenuOptions,
+  ) {
     this.renderer = renderer;
     this.theme = theme;
+    this.strings = strings;
     this.callbacks = options;
+
+    this.help = [
+      { key: strings.keys.arrowsUD, action: strings.help.navigate },
+      { key: strings.keys.enter, action: strings.help.select },
+      { key: strings.keys.typeInput, action: strings.help.filter },
+      ...globalHelp(strings),
+    ];
 
     this.root = new BoxRenderable(renderer, {
       id: "main-menu-root",
@@ -65,13 +73,13 @@ export class MainMenu {
     };
     this.headerBar = new TextRenderable(renderer, {
       id: "main-menu-header",
-      content: formatHeaderBar(theme, disconnectedInfo),
+      content: formatHeaderBar(theme, strings, disconnectedInfo),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
 
     // Title
-    const title = options.title ?? "Home Assistant TUI";
+    const title = options.title ?? strings.app.name;
     const titleBar = new TextRenderable(renderer, {
       id: "main-menu-title",
       content: t`${bold(fg(theme.accent)(title))}`,
@@ -104,7 +112,7 @@ export class MainMenu {
       },
       onFilterChange: (filter) => this.updateFilterBar(filter),
       onEscape: () => {
-        // No-op on main menu with empty filter — quit via Ctrl+c
+        // No-op on main menu with empty filter — quit via Ctrl+C
       },
       initialSelectedIndex: initialIdx,
       wrapSelection: true,
@@ -114,7 +122,7 @@ export class MainMenu {
     // Help bar
     this.helpBar = new TextRenderable(renderer, {
       id: "main-menu-help",
-      content: formatHelpBar(theme, HELP),
+      content: formatHelpBar(theme, this.help),
       marginTop: 1,
     });
     this.root.add(this.helpBar);
@@ -123,13 +131,13 @@ export class MainMenu {
 
     // Re-wrap bars on terminal resize
     renderer.on("resize", () => {
-      this.helpBar.content = formatHelpBar(this.theme, HELP);
+      this.helpBar.content = formatHelpBar(this.theme, this.help);
     });
   }
 
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
-    this.headerBar.content = formatHeaderBar(this.theme, info);
+    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info);
   }
 
   /** Show or hide the main menu view */
