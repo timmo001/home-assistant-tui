@@ -13,7 +13,7 @@ export interface HelpEntry {
 
 /** Global help entries appended to every view's help bar */
 export function globalHelp(strings: Locale): readonly HelpEntry[] {
-  return [{ key: strings.keys.ctrlC, action: strings.help.quit }];
+  return [{ key: strings.keys.ctrl.c, action: strings.help.quit }];
 }
 
 /** Separator between key-action pairs (visible width) */

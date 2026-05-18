@@ -126,14 +126,16 @@ export interface Locale {
   keys: {
     readonly arrowsUD: string;
     readonly backspace: string;
-    readonly ctrlC: string;
-    readonly ctrlD: string;
-    readonly ctrlG: string;
-    readonly ctrlH: string;
-    readonly ctrlR: string;
-    readonly ctrlS: string;
-    readonly ctrlW: string;
-    readonly ctrlY: string;
+    ctrl: {
+      readonly c: string;
+      readonly d: string;
+      readonly g: string;
+      readonly h: string;
+      readonly r: string;
+      readonly s: string;
+      readonly w: string;
+      readonly y: string;
+    };
     readonly enter: string;
     readonly esc: string;
     readonly pgUpDn: string;
