@@ -9,13 +9,16 @@ import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
-import { submenus, submenuTitles } from "../menu.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
 
 /** Configuration callbacks for the submenu view */
 export interface SubmenuViewOptions {
+  /** Map of submenu ID → items */
+  readonly submenus: Map<string, readonly MenuItem[]>;
+  /** Display titles for submenu breadcrumbs */
+  readonly submenuTitles: Map<string, string>;
   /** Called when the user selects a non-submenu action item */
   readonly onAction: (item: MenuItem) => void;
   /** Called when the user navigates back from the root submenu level */
@@ -174,7 +177,7 @@ export class SubmenuView {
   }
 
   private loadMenu(menuId: string): void {
-    const items = submenus.get(menuId);
+    const items = this.callbacks.submenus.get(menuId);
     if (!items) return;
 
     this.currentMenuId = menuId;
@@ -203,7 +206,7 @@ export class SubmenuView {
       onSelect: (item) => {
         if (
           item.action.type === "submenu" &&
-          submenus.has(item.action.menuId)
+          this.callbacks.submenus.has(item.action.menuId)
         ) {
           this.pushSubmenu(item.action.menuId);
         } else {
@@ -240,12 +243,12 @@ export class SubmenuView {
     const parts = [this.rootTitle];
 
     for (const menuId of this.menuStack) {
-      const title = submenuTitles.get(menuId) ?? menuId;
+      const title = this.callbacks.submenuTitles.get(menuId) ?? menuId;
       parts.push(title);
     }
 
     if (this.currentMenuId) {
-      const title = submenuTitles.get(this.currentMenuId) ?? this.currentMenuId;
+      const title = this.callbacks.submenuTitles.get(this.currentMenuId) ?? this.currentMenuId;
       if (parts[parts.length - 1] !== title) {
         parts.push(title);
       }

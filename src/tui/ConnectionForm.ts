@@ -133,13 +133,13 @@ export class ConnectionForm {
 
     // Help bar
     const helpEntries: HelpEntry[] = [
-      { key: strings.keys.tab, action: strings.connectionForm.helpNextField },
-      { key: strings.keys.enter, action: strings.connectionForm.helpSave },
+      { key: strings.keys.tab, action: strings.connectionForm.help.nextField },
+      { key: strings.keys.enter, action: strings.connectionForm.help.save },
       ...(options.onCancel
         ? [
             {
               key: strings.keys.esc,
-              action: strings.connectionForm.helpCancel,
+              action: strings.connectionForm.help.cancel,
             } as HelpEntry,
           ]
         : []),

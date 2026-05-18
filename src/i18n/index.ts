@@ -16,4 +16,3 @@ export const Strings = Context.Reference<Locale>("ha-tui/Strings", {
 });
 
 export type { Locale } from "./types.js";
-export { en } from "./en.js";

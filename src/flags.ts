@@ -1,4 +1,4 @@
-import { menuItemsById, submenus } from "./menu.js";
+import type { MenuRegistry } from "./menu.js";
 
 /** Parsed CLI flags */
 export interface Flags {
@@ -11,9 +11,8 @@ export interface Flags {
 }
 
 /** Check whether a candidate string matches any known menu item or submenu */
-function isKnownTarget(candidate: string): boolean {
-  if (menuItemsById.has(candidate) || submenus.has(candidate)) return true;
-  return false;
+function isKnownTarget(candidate: string, menu: MenuRegistry): boolean {
+  return menu.menuItemsById.has(candidate) || menu.submenus.has(candidate);
 }
 
 /**
@@ -23,7 +22,7 @@ function isKnownTarget(candidate: string): boolean {
  * the menu registry. For example, `["settings", "display", "colors"]` resolves
  * to subcommand `"settings.display.colors"` if that ID exists in the registry.
  */
-export function parseFlags(args: readonly string[]): Flags {
+export function parseFlags(args: readonly string[], menu: MenuRegistry): Flags {
   let subcommand: string | undefined;
   let help = false;
   const rest: string[] = [];
@@ -43,7 +42,7 @@ export function parseFlags(args: readonly string[]): Flags {
     // Try longest candidate first, shrink until a match is found
     for (let len = positionals.length; len >= 1; len--) {
       const candidate = positionals.slice(0, len).join(".");
-      if (isKnownTarget(candidate)) {
+      if (isKnownTarget(candidate, menu)) {
         subcommand = candidate;
         consumed = len;
         break;
@@ -76,9 +75,10 @@ export function parseFlags(args: readonly string[]): Flags {
 /** Resolve a subcommand string to a menu item target */
 export function resolveSubcommand(
   sub: string,
+  menu: MenuRegistry,
 ): { type: "item"; itemId: string } | undefined {
-  if (menuItemsById.has(sub)) return { type: "item", itemId: sub };
-  if (submenus.has(sub)) return { type: "item", itemId: sub };
+  if (menu.menuItemsById.has(sub)) return { type: "item", itemId: sub };
+  if (menu.submenus.has(sub)) return { type: "item", itemId: sub };
   return undefined;
 }
 

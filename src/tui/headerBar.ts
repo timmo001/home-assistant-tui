@@ -138,10 +138,10 @@ function statusLabel(strings: Locale, info: ConnectionInfo): string {
 function formatAgo(strings: Locale, date: Date): string {
   const secs = Math.floor((Date.now() - date.getTime()) / 1000);
   if (secs < 5) return strings.status.justNow;
-  if (secs < 60) return strings.status.secondsAgo(secs);
+  if (secs < 60) return strings.status.ago.seconds(secs);
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return strings.status.minutesAgo(mins);
-  return strings.status.hoursAgo(Math.floor(mins / 60));
+  if (mins < 60) return strings.status.ago.minutes(mins);
+  return strings.status.ago.hours(Math.floor(mins / 60));
 }
 
 /** Extract plain-text content from a TextChunk for width calculations */

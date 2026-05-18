@@ -495,30 +495,30 @@ export class EntitiesView {
   private applyGrouping(items: readonly SearchableMenuItem[]): SearchableMenuItem[] {
     const s = this.strings.entities;
     const ungroupedLabels = new Set([
-      s.ungroupedDevice,
-      s.ungroupedDomain,
-      s.ungroupedArea,
-      s.ungroupedIntegration,
+      s.ungrouped.device,
+      s.ungrouped.domain,
+      s.ungrouped.area,
+      s.ungrouped.integration,
     ]);
 
     const grouped = items.map((item): SearchableMenuItem => {
       let group: string;
       switch (this.groupMode) {
         case "area":
-          group = item.areaName || s.ungroupedArea;
+          group = item.areaName || s.ungrouped.area;
           break;
         case "device":
-          group = item.deviceName || s.ungroupedDevice;
+          group = item.deviceName || s.ungrouped.device;
           break;
         case "integration":
-          group = item.integrationName || s.ungroupedIntegration;
+          group = item.integrationName || s.ungrouped.integration;
           break;
         case "domain":
           // Capitalize domain: "light" → "Light", "binary_sensor" → "Binary sensor"
           group = item.domain
             ? item.domain.charAt(0).toUpperCase() +
               item.domain.slice(1).replace(/_/g, " ")
-            : s.ungroupedDomain;
+            : s.ungrouped.domain;
           break;
       }
       return { ...item, group };
@@ -615,13 +615,13 @@ export class EntitiesView {
     const s = this.strings.entities;
     switch (this.groupMode) {
       case "device":
-        return s.groupByDevice;
+        return s.groupBy.device;
       case "domain":
-        return s.groupByDomain;
+        return s.groupBy.domain;
       case "area":
-        return s.groupByArea;
+        return s.groupBy.area;
       case "integration":
-        return s.groupByIntegration;
+        return s.groupBy.integration;
     }
   }
 

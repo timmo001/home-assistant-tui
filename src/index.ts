@@ -6,14 +6,18 @@ import { loadTheme } from "./theme.js";
 import { Toast } from "./tui/Toast.js";
 import { App } from "./tui/App.js";
 import { parseFlags, resolveSubcommand, printHelp } from "./flags.js";
-import { menuItemsById } from "./menu.js";
+import { buildMenu } from "./menu.js";
 import { loadConfig, saveConfig, isConfigured } from "./config.js";
 import { Strings } from "./i18n/index.js";
+import { en } from "./i18n/en.js";
 import { runTestConnection } from "./cmd/testConnection.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 
-const flags = parseFlags(process.argv.slice(2));
+// Build menu with the default locale for CLI argument parsing.
+// Rebuilt with the resolved locale inside the Effect program.
+const defaultMenu = buildMenu(en);
+const flags = parseFlags(process.argv.slice(2), defaultMenu);
 
 if (flags.help) {
   printHelp();
@@ -37,20 +41,21 @@ if (flags.subcommand === "test-connection") {
     Effect.gen(function* () {
       const strings = yield* Strings;
       const theme = yield* loadTheme;
+      const menu = buildMenu(strings);
       log("Starting...");
 
       // Resolve subcommand to determine startup behaviour
       let executeItemId: string | undefined;
 
       if (flags.subcommand) {
-        const resolved = resolveSubcommand(flags.subcommand);
+        const resolved = resolveSubcommand(flags.subcommand, menu);
         if (!resolved) {
           console.error(strings.errors.unknownSubcommand(flags.subcommand));
           printHelp();
           process.exit(1);
         }
 
-        const item = menuItemsById.get(resolved.itemId);
+        const item = menu.menuItemsById.get(resolved.itemId);
         if (item) {
           const { action } = item;
           if (
@@ -89,7 +94,7 @@ if (flags.subcommand === "test-connection") {
         const cr = yield* CommandRunner;
 
         const app = new App(
-          { renderer, theme, strings, commandRunner: cr },
+          { renderer, theme, strings, menu, commandRunner: cr },
           {
             executeItemId,
             initialView,

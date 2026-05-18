@@ -452,10 +452,10 @@ export class DashboardView {
   private formatRelativeTime(isoString: string): string {
     const secs = Math.floor((Date.now() - Date.parse(isoString)) / 1000);
     if (secs < 5) return this.strings.status.justNow;
-    if (secs < 60) return this.strings.status.secondsAgo(secs);
+    if (secs < 60) return this.strings.status.ago.seconds(secs);
     const mins = Math.floor(secs / 60);
-    if (mins < 60) return this.strings.status.minutesAgo(mins);
-    return this.strings.status.hoursAgo(Math.floor(mins / 60));
+    if (mins < 60) return this.strings.status.ago.minutes(mins);
+    return this.strings.status.ago.hours(Math.floor(mins / 60));
   }
 
   /** Show a status message above the empty menu list. */

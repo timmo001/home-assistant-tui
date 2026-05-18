@@ -10,7 +10,6 @@ import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
-import { mainMenuItems } from "../menu.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
@@ -19,6 +18,8 @@ const log = (msg: string) => console.error(`[ha-tui:MainMenu] ${msg}`);
 
 /** Configuration callbacks for the main menu */
 export interface MainMenuOptions {
+  /** Menu items to display */
+  readonly items: readonly MenuItem[];
   /** Called when the user selects a menu item */
   readonly onSelect: (item: MenuItem) => void;
   /** If set, pre-select the item with this ID on startup */
@@ -99,13 +100,13 @@ export class MainMenu {
     const initialIdx = options.initialSelectedId
       ? Math.max(
           0,
-          mainMenuItems.findIndex((m) => m.id === options.initialSelectedId),
+          options.items.findIndex((m) => m.id === options.initialSelectedId),
         )
       : 0;
 
     this.menuList = new MenuList(renderer, {
       id: "main-menu-list",
-      items: mainMenuItems,
+      items: options.items,
       theme,
       onSelect: (item) => {
         this.callbacks.onSelect(item);

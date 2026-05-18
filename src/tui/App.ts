@@ -5,7 +5,7 @@ import type { ViewId, MenuItem, MenuAction } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
-import { menuItemsById, submenus } from "../menu.js";
+import type { MenuRegistry } from "../menu.js";
 import type { CommandRunnerService } from "../services/CommandRunner.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
@@ -41,6 +41,8 @@ export interface AppDeps {
   readonly theme: Theme;
   /** Active locale */
   readonly strings: Locale;
+  /** Built menu registry */
+  readonly menu: MenuRegistry;
   /** Service for running shell commands with suspend/resume */
   readonly commandRunner: CommandRunnerService;
 }
@@ -55,6 +57,7 @@ export type OnConnectionSaved = (values: ConnectionFormValues) => void;
 export class App {
   private renderer: CliRenderer;
   private commandRunner: CommandRunnerService;
+  private menu: MenuRegistry;
   private mainMenu: MainMenu;
   private submenuView: SubmenuView;
   private dashboardView: DashboardView;
@@ -74,6 +77,7 @@ export class App {
   ) {
     this.renderer = deps.renderer;
     this.commandRunner = deps.commandRunner;
+    this.menu = deps.menu;
     this.strings = deps.strings;
     this.appTitle = options.title ?? deps.strings.app.name;
     this.connectionValues = options.initialConnectionValues ?? {};
@@ -81,6 +85,7 @@ export class App {
     // --- Create views ---
 
     this.mainMenu = new MainMenu(deps.renderer, deps.theme, deps.strings, {
+      items: deps.menu.mainMenuItems,
       onSelect: (item) => this.handleMenuAction(item),
       initialSelectedId: options.executeItemId,
       title: options.title,
@@ -91,6 +96,8 @@ export class App {
       deps.theme,
       deps.strings,
       {
+        submenus: deps.menu.submenus,
+        submenuTitles: deps.menu.submenuTitles,
         onAction: (item) => this.handleMenuAction(item),
         onBack: () => this.popView(),
         rootTitle: options.title ?? deps.strings.app.name,
@@ -190,7 +197,7 @@ export class App {
     }
 
     if (options.executeItemId) {
-      const item = menuItemsById.get(options.executeItemId);
+      const item = this.menu.menuItemsById.get(options.executeItemId);
       if (item) {
         this.showView("main");
         const { action } = item;
