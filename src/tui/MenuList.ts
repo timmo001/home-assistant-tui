@@ -173,10 +173,13 @@ export class MenuList extends ScrollBoxRenderable {
    * rows are patched in-place to avoid flicker and scroll position loss.
    * Otherwise, a full rebuild is performed with selection restoration.
    */
-  setFilteredItems(items: readonly MenuItem[]): void {
+  setFilteredItems(
+    items: readonly MenuItem[],
+    options?: { resetSelection?: boolean },
+  ): void {
     // Preserve selection: remember the currently selected item's ID
     const prevSelected = this.getSelectedItem();
-    const prevId = prevSelected?.id;
+    const prevId = options?.resetSelection ? undefined : prevSelected?.id;
 
     const prevItems = this._items;
     this._items = items;

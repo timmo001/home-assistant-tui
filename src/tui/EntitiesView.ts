@@ -446,7 +446,7 @@ export class EntitiesView extends ConnectedView {
   }
 
   /** Rebuild and display the current item list with grouping applied */
-  private rebuildAndDisplay(): void {
+  private rebuildAndDisplay(options?: { resetSelection?: boolean }): void {
     if (this.filterText.length === 0) {
       // No filter — show all items grouped
       this.filteredItems = this.applyGrouping(this.allMenuItems);
@@ -462,7 +462,7 @@ export class EntitiesView extends ConnectedView {
     }
 
     this.hideStatus();
-    this.menuList.setFilteredItems(this.filteredItems);
+    this.menuList.setFilteredItems(this.filteredItems, options);
     this.updatePageIndicator();
   }
 
@@ -472,7 +472,7 @@ export class EntitiesView extends ConnectedView {
     const currentIdx = GROUP_MODES.indexOf(this.groupMode);
     this.groupMode = GROUP_MODES[(currentIdx + 1) % GROUP_MODES.length];
     log(`Group mode changed to: ${this.groupMode}`);
-    this.rebuildAndDisplay();
+    this.rebuildAndDisplay({ resetSelection: true });
   }
 
   // ── Search / Filter ───────────────────────────────────────────────────────
