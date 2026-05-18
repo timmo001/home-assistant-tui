@@ -78,6 +78,7 @@ const program = Effect.gen(function* () {
       title: "Home Assistant TUI",
       executeItemId,
       initialView,
+      initialConnectionValues: config.homeassistant,
     },
     // onConnectionSaved — called when user saves the connection form
     (values) => {
