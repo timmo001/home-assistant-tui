@@ -161,10 +161,39 @@ export class MenuList extends ScrollBoxRenderable {
    * Resets selection to top and rebuilds rows for the new item set.
    */
   setFilteredItems(items: readonly MenuItem[]): void {
+    // Preserve selection: remember the currently selected item's ID and position
+    const prevSelected = this.getSelectedItem();
+    const prevId = prevSelected?.id;
+    const prevPage = this._currentPage;
+    const prevIndex = this._selectedIndex;
+
     this._clearRows();
     this._items = items;
-    this._currentPage = 0;
-    this._selectedIndex = this._hasPrevSentinel() ? 1 : 0;
+
+    // Try to restore page and selection position
+    if (prevId && items.length > 0) {
+      const globalIndex = items.findIndex((item) => item.id === prevId);
+      if (globalIndex >= 0 && this._isPaginated()) {
+        // Item still exists — restore to its page and position
+        this._currentPage = Math.floor(globalIndex / this._pageSize!);
+        const pageStart = this._currentPage * this._pageSize!;
+        const indexInPage = globalIndex - pageStart;
+        this._selectedIndex =
+          (this._hasPrevSentinel() ? 1 : 0) + indexInPage;
+      } else if (globalIndex >= 0) {
+        // No pagination — just set the index
+        this._currentPage = 0;
+        this._selectedIndex = globalIndex;
+      } else {
+        // Item gone — jump to top
+        this._currentPage = 0;
+        this._selectedIndex = this._hasPrevSentinel() ? 1 : 0;
+      }
+    } else {
+      this._currentPage = 0;
+      this._selectedIndex = this._hasPrevSentinel() ? 1 : 0;
+    }
+
     this._buildRows();
     this._emitPageChange();
   }
