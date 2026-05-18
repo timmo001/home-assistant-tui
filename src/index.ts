@@ -9,6 +9,7 @@ import { parseFlags, resolveSubcommand, printHelp } from "./flags.js";
 import { menuItemsById } from "./menu.js";
 import { loadConfig, saveConfig, isConfigured } from "./config.js";
 import { Strings } from "./i18n/index.js";
+import { runTestConnection } from "./cmd/testConnection.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 
@@ -19,120 +20,130 @@ if (flags.help) {
   process.exit(0);
 }
 
-const program = Effect.scoped(
-  Effect.gen(function* () {
-    const strings = yield* Strings;
-    const theme = yield* loadTheme;
-    log("Starting...");
+// Special diagnostic subcommand — runs without the TUI and exits
+if (flags.subcommand === "test-connection") {
+  Effect.runPromise(runTestConnection).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else {
+  // ── Normal TUI startup ──────────────────────────────────────────────────
 
-    // Resolve subcommand to determine startup behaviour
-    let executeItemId: string | undefined;
+  const program = Effect.scoped(
+    Effect.gen(function* () {
+      const strings = yield* Strings;
+      const theme = yield* loadTheme;
+      log("Starting...");
 
-    if (flags.subcommand) {
-      const resolved = resolveSubcommand(flags.subcommand);
-      if (!resolved) {
-        console.error(strings.errors.unknownSubcommand(flags.subcommand));
-        printHelp();
-        process.exit(1);
-      }
+      // Resolve subcommand to determine startup behaviour
+      let executeItemId: string | undefined;
 
-      const item = menuItemsById.get(resolved.itemId);
-      if (item) {
-        const { action } = item;
-        if (
-          action.type === "command" ||
-          action.type === "silent" ||
-          action.type === "notify" ||
-          action.type === "submenu"
-        ) {
-          executeItemId = resolved.itemId;
+      if (flags.subcommand) {
+        const resolved = resolveSubcommand(flags.subcommand);
+        if (!resolved) {
+          console.error(strings.errors.unknownSubcommand(flags.subcommand));
+          printHelp();
+          process.exit(1);
+        }
+
+        const item = menuItemsById.get(resolved.itemId);
+        if (item) {
+          const { action } = item;
+          if (
+            action.type === "command" ||
+            action.type === "silent" ||
+            action.type === "notify" ||
+            action.type === "submenu"
+          ) {
+            executeItemId = resolved.itemId;
+          }
         }
       }
-    }
 
-    const renderer = yield* Effect.promise(() =>
-      createCliRenderer({
-        exitOnCtrlC: true,
-        screenMode: "alternate-screen",
-        useMouse: false,
-        backgroundColor: theme.bg,
-        onDestroy: () => process.exit(0),
-      }),
-    );
-    log("Renderer created");
-
-    const toast = new Toast(renderer, theme);
-    const config = yield* loadConfig;
-    const configured = yield* isConfigured;
-    const initialView = configured ? "main" : "setup";
-    log(
-      `Config ${configured ? "found" : "not found"} — starting on ${initialView}`,
-    );
-
-    // Run the app with services provided via layers
-    yield* Effect.gen(function* () {
-      const ha = yield* HomeAssistantService;
-      const cr = yield* CommandRunner;
-
-      const app = new App(
-        { renderer, theme, strings, commandRunner: cr },
-        {
-          executeItemId,
-          initialView,
-          initialConnectionValues: config.homeassistant,
-        },
-        // onConnectionSaved — called when user saves the connection form
-        (values) => {
-          log(`Saving new config: url=${values.url}`);
-          const newConfig = {
-            homeassistant: { url: values.url, token: values.token },
-          };
-          Effect.runFork(
-            saveConfig(newConfig).pipe(
-              Effect.catch((err) =>
-                Effect.sync(() => log(`Save config failed: ${err}`)),
-              ),
-              Effect.flatMap(() => ha.reconfigure(newConfig)),
-            ),
-          );
-        },
+      const renderer = yield* Effect.promise(() =>
+        createCliRenderer({
+          exitOnCtrlC: true,
+          screenMode: "alternate-screen",
+          useMouse: false,
+          backgroundColor: theme.bg,
+          onDestroy: () => process.exit(0),
+        }),
       );
-      log("App created");
+      log("Renderer created");
 
-      // Subscribe to HA connection state and push updates to the header bar
-      ha.subscribe((info) => {
-        app.updateConnectionInfo(info);
-        app.updateConnection(
-          info.status === "connected" ? ha.getConnection() : null,
+      const toast = new Toast(renderer, theme);
+      const config = yield* loadConfig;
+      const configured = yield* isConfigured;
+      const initialView = configured ? "main" : "setup";
+      log(
+        `Config ${configured ? "found" : "not found"} — starting on ${initialView}`,
+      );
+
+      // Run the app with services provided via layers
+      yield* Effect.gen(function* () {
+        const ha = yield* HomeAssistantService;
+        const cr = yield* CommandRunner;
+
+        const app = new App(
+          { renderer, theme, strings, commandRunner: cr },
+          {
+            executeItemId,
+            initialView,
+            initialConnectionValues: config.homeassistant,
+          },
+          // onConnectionSaved — called when user saves the connection form
+          (values) => {
+            log(`Saving new config: url=${values.url}`);
+            const newConfig = {
+              homeassistant: { url: values.url, token: values.token },
+            };
+            Effect.runFork(
+              saveConfig(newConfig).pipe(
+                Effect.catch((err) =>
+                  Effect.sync(() => log(`Save config failed: ${err}`)),
+                ),
+                Effect.flatMap(() => ha.reconfigure(newConfig)),
+              ),
+            );
+          },
         );
-      });
+        log("App created");
 
-      // Only attempt connection if a token is configured
-      if (configured) {
-        log("Connecting to Home Assistant...");
-        yield* Effect.forkScoped(ha.connect);
-      }
+        // Subscribe to HA connection state and push updates to the header bar
+        ha.subscribe((info) => {
+          app.updateConnectionInfo(info);
+          app.updateConnection(
+            info.status === "connected" ? ha.getConnection() : null,
+          );
+        });
 
-      log("Starting renderer...");
-      renderer.start();
-      log("Renderer started — TUI is live");
+        // Only attempt connection if a token is configured
+        if (configured) {
+          log("Connecting to Home Assistant...");
+          yield* Effect.forkScoped(ha.connect);
+        }
 
-      yield* Effect.never;
-    }).pipe(
-      Effect.provide(
-        Layer.merge(
-          HomeAssistantService.layer(config, strings),
-          CommandRunner.layer(renderer, toast, strings),
+        log("Starting renderer...");
+        renderer.start();
+        log("Renderer started — TUI is live");
+
+        yield* Effect.never;
+      }).pipe(
+        Effect.provide(
+          Layer.merge(
+            HomeAssistantService.layer(config, strings),
+            CommandRunner.layer(renderer, toast, strings),
+          ),
         ),
-      ),
-    );
-  }),
-);
+      );
+    }),
+  );
 
-log("Launching...");
+  log("Launching...");
 
-Effect.runPromise(program).catch((err) => {
-  log(`Fatal error: ${err}`);
-  console.error(err);
-  process.exit(1);
-});
+  Effect.runPromise(program).catch((err) => {
+    log(`Fatal error: ${err}`);
+    console.error(err);
+    process.exit(1);
+  });
+}
