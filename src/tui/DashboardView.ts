@@ -19,6 +19,11 @@ import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
 import { fetchFrontendHomeData } from "../data/frontend.js";
 import { getCommonControlsUsagePrediction } from "../data/usagePrediction.js";
+import {
+  fetchStateTranslations,
+  translateEntityState,
+  type LocalizeFunc,
+} from "../data/stateTranslation.js";
 
 const log = (msg: string) => console.error(`[ha-tui:DashboardView] ${msg}`);
 
@@ -106,6 +111,7 @@ export class DashboardView {
 
   // Connection / subscription state
   private conn: Connection | null = null;
+  private localize: LocalizeFunc | null = null;
   private unsubEntities: UnsubscribeFunc | null = null;
   private entityIds: readonly string[] = [];
   /** Memoised per-entity state — used to skip unchanged entities on each callback. */
@@ -270,15 +276,22 @@ export class DashboardView {
     this.showStatus("Loading\u2026");
 
     try {
-      const [homeResult, predictedResult] = await Promise.allSettled([
+      const [homeResult, predictedResult, localizeResult] = await Promise.allSettled([
         fetchFrontendHomeData(conn),
         getCommonControlsUsagePrediction(conn),
+        fetchStateTranslations(conn),
       ]);
 
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
         log("Connection changed during initialization — aborting");
         return;
+      }
+
+      if (localizeResult.status === "fulfilled") {
+        this.localize = localizeResult.value;
+      } else {
+        log(`Failed to fetch state translations: ${String(localizeResult.reason)}`);
       }
 
       const favorites =
@@ -423,6 +436,7 @@ export class DashboardView {
   private cleanup(): void {
     this.unsubEntities?.();
     this.unsubEntities = null;
+    this.localize = null;
     this.entityCache.clear();
     this.entityIds = [];
     this.isFirstEntityUpdate = true;
@@ -443,8 +457,11 @@ export class DashboardView {
   }
 
   private formatDescription(entity: HassEntity): string {
+    const stateDisplay = this.localize
+      ? translateEntityState(entity, this.localize)
+      : entity.state;
     const rel = this.formatRelativeTime(entity.last_changed);
-    return rel ? `${entity.state} · ${rel}` : entity.state;
+    return rel ? `${stateDisplay} · ${rel}` : stateDisplay;
   }
 
   private formatRelativeTime(isoString: string): string {
