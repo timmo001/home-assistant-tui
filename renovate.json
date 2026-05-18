@@ -5,7 +5,7 @@
     {
       "matchPackageNames": ["effect"],
       "ignoreUnstable": false,
-      "stabilityDays": 0
+      "minimumReleaseAge": null
     }
   ]
 }
