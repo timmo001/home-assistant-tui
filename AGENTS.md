@@ -8,11 +8,13 @@ Project instructions for AI coding agents working in this repository.
 
 ## Home Assistant source of truth
 
-- **Types and interfaces**: Use `home-assistant-js-websocket` as the primary source. This is the official HA client library used by the HA frontend itself. All core types (`HassEntity`, `HassConfig`, `HassUser`, `HassEntities`, `StateChangedEvent`, `Connection`, `Auth`, etc.) are exported from this package.
-- **Frontend reference**: The HA frontend at `../frontend` serves as the authoritative reference for types, helpers, and patterns. When a type or utility is needed:
-  1. Check `home-assistant-js-websocket` exports first.
-  2. If not there, check `../frontend/src/data/` and `../frontend/src/common/entity/` for frontend-defined helpers (e.g. `computeStateName`, `stateActive`, `computeDomain`).
-  3. Only define local types when neither source covers the need.
+`../frontend` is the authoritative source of truth for all HA types, helpers, and patterns. Always consult it before writing anything from scratch.
+
+- **Lookup order**: When a type, helper, or pattern is needed:
+  1. Check what is already defined in this repo — prefer reusing or extending existing local types and helpers.
+  2. Check `home-assistant-js-websocket` exports — it covers core types (`HassEntity`, `HassConfig`, `HassUser`, `HassEntities`, `StateChangedEvent`, `Connection`, `Auth`, etc.) and is already a dependency.
+  3. If not in that package, find the canonical implementation in `../frontend` — primary locations are `../frontend/src/data/` (domain data helpers) and `../frontend/src/common/entity/` (entity helpers like `computeStateName`, `stateActive`, `computeDomain`). Copy the relevant code into this repo rather than writing an independent implementation. Keep copied code minimal — only bring in what is actually needed.
+  4. Only author a local type or helper from scratch when it is genuinely absent from all three sources.
 - **Key API**: Use `createLongLivedTokenAuth(url, token)` + `createConnection({ auth, createSocket })` for authentication. Never roll a hand-written WebSocket auth flow.
 - **Config types**: `HassConfig.version` is the HA version string. `HassUser.name` is the authenticated user's display name.
 
