@@ -64,10 +64,12 @@ export const en: Locale = {
     cancel: "cancel",
     nextPage: "next page",
     prevPage: "prev page",
+    groupBy: "group by",
   },
 
   keys: {
     ctrlC: "Ctrl+C",
+    ctrlG: "Ctrl+G",
     arrowsUD: "↑↓",
     enter: "Enter",
     esc: "Esc",
@@ -92,6 +94,14 @@ export const en: Locale = {
     empty: "No entities found",
     searchPrompt: (count) =>
       `Type to search ${count.toLocaleString()} entities`,
+    groupByDevice: "Device",
+    groupByDomain: "Domain",
+    groupByArea: "Area",
+    groupByIntegration: "Integration",
+    ungroupedDevice: "No device",
+    ungroupedDomain: "Other",
+    ungroupedArea: "No area",
+    ungroupedIntegration: "Unknown",
   },
 
   errors: {

@@ -57,11 +57,13 @@ export interface Locale {
     readonly cancel: string;
     readonly nextPage: string;
     readonly prevPage: string;
+    readonly groupBy: string;
   };
 
   /** Key names as displayed in help bars */
   keys: {
     readonly ctrlC: string;
+    readonly ctrlG: string;
     readonly arrowsUD: string;
     readonly enter: string;
     readonly esc: string;
@@ -86,6 +88,19 @@ export interface Locale {
     readonly loading: string;
     readonly empty: string;
     readonly searchPrompt: (count: number) => string;
+    /** Group mode labels */
+    readonly groupByDevice: string;
+    readonly groupByDomain: string;
+    readonly groupByArea: string;
+    readonly groupByIntegration: string;
+    /** Label for entities without a device */
+    readonly ungroupedDevice: string;
+    /** Label for entities without a domain (shouldn't happen, but fallback) */
+    readonly ungroupedDomain: string;
+    /** Label for entities without an area */
+    readonly ungroupedArea: string;
+    /** Label for entities without an integration (shouldn't happen, but fallback) */
+    readonly ungroupedIntegration: string;
   };
 
   errors: {

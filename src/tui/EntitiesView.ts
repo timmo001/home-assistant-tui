@@ -29,6 +29,15 @@ import {
   type EntityRegistryEntry,
 } from "../data/entityRegistry.js";
 import {
+  fetchDeviceRegistry,
+  computeDeviceName,
+  type DeviceRegistryEntry,
+} from "../data/deviceRegistry.js";
+import {
+  fetchAreaRegistry,
+  type AreaRegistryEntry,
+} from "../data/areaRegistry.js";
+import {
   fetchStateTranslations,
   translateEntityState,
   type LocalizeFunc,
@@ -40,7 +49,13 @@ import type { FuseOptionKey } from "fuse.js";
 const log = (msg: string) => console.error(`[ha-tui:EntitiesView] ${msg}`);
 
 /** Maximum items rendered per page */
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
+
+/** Grouping modes for the entity list */
+type GroupMode = "area" | "device" | "integration" | "domain";
+
+/** Cycle order for Ctrl+G */
+const GROUP_MODES: readonly GroupMode[] = ["area", "device", "integration", "domain"];
 
 // ---------------------------------------------------------------------------
 
@@ -53,15 +68,17 @@ export interface EntitiesViewOptions {
   readonly onTitleChange?: (titleParts: readonly string[]) => void;
 }
 
-/** Combined entity data: registry metadata + live state */
-interface EntityItem {
-  readonly registryEntry: EntityRegistryEntry;
-  readonly entity: HassEntity | undefined;
-}
-
-/** MenuItem augmented with searchable fields for the two-phase algorithm */
+/** MenuItem augmented with searchable fields and grouping metadata */
 interface SearchableMenuItem extends MenuItem {
   readonly searchFields: readonly string[];
+  /** Domain for domain grouping */
+  readonly domain: string;
+  /** Device display name for device grouping */
+  readonly deviceName: string;
+  /** Area display name for area grouping */
+  readonly areaName: string;
+  /** Integration (platform) display name for integration grouping */
+  readonly integrationName: string;
 }
 
 /** Fuse.js key definitions for the fuzzy fallback */
@@ -76,14 +93,15 @@ const FUSE_KEYS: ReadonlyArray<FuseOptionKey<SearchableMenuItem>> = [
  *
  * Data sources:
  *   - Entity registry (`config/entity_registry/list`) for metadata
+ *   - Device registry (`config/device_registry/list`) for device names
+ *   - Area registry (`config/area_registry/list`) for area names
+ *   - Floor registry (`config/floor_registry/list`) for floor ordering
  *   - `subscribeEntities` for live state values
  *
- * Search algorithm matches the HA frontend `/config/entities` page:
- *   1. Exact substring match (diacritics-stripped, multi-term AND)
- *   2. Fuse.js fuzzy fallback (threshold 0.2) if exact yields nothing
- *
- * The list is paginated at 100 items per page with sentinel rows for
- * page navigation and PgUp/PgDn keyboard support.
+ * Grouping modes (Ctrl+G to cycle):
+ *   - Device (default): group by device name, sort floor→area→device→entity
+ *   - Domain: group by entity domain, sort domain→entity
+ *   - Area: group by area name, sort floor→area→entity
  */
 export class EntitiesView {
   private renderer: CliRenderer;
@@ -107,9 +125,14 @@ export class EntitiesView {
   private unsubEntities: UnsubscribeFunc | null = null;
   private unsubRegistry: (() => void) | null = null;
   private registryEntries: EntityRegistryEntry[] = [];
+  private deviceMap: Map<string, DeviceRegistryEntry> = new Map();
+  private areaMap: Map<string, AreaRegistryEntry> = new Map();
   private entityStates: HassEntities = {};
   private isFirstEntityUpdate = true;
   private initializationInProgress = false;
+
+  // Grouping mode
+  private groupMode: GroupMode = "area";
 
   // Full merged item list (all entities)
   private allMenuItems: SearchableMenuItem[] = [];
@@ -144,6 +167,7 @@ export class EntitiesView {
       { key: strings.keys.arrowsUD, action: strings.help.navigate },
       { key: strings.keys.enter, action: strings.help.select },
       { key: strings.keys.typeInput, action: strings.help.filter },
+      { key: strings.keys.ctrlG, action: strings.help.groupBy },
       { key: strings.keys.pgUpDn, action: strings.help.nextPage },
       { key: strings.keys.esc, action: strings.help.back },
       ...globalHelp(strings),
@@ -264,10 +288,8 @@ export class EntitiesView {
 
   resetAndFocus(): void {
     this.filterText = "";
-    this.filteredItems = this.allMenuItems;
-    this.menuList.setItems(this.allMenuItems);
+    this.rebuildAndDisplay();
     this.updateFilterBar("");
-    this.updatePageIndicator();
     this.menuList.focus();
   }
 
@@ -289,14 +311,17 @@ export class EntitiesView {
     this.cleanup();
     this.conn = conn;
 
-    log("Fetching entity registry and translations");
+    log("Fetching registries and translations");
     this.showStatus(this.strings.entities.loading);
 
     try {
-      const [registryResult, localizeResult] = await Promise.allSettled([
-        fetchEntityRegistry(conn),
-        fetchStateTranslations(conn),
-      ]);
+      const [registryResult, deviceResult, areaResult, localizeResult] =
+        await Promise.allSettled([
+          fetchEntityRegistry(conn),
+          fetchDeviceRegistry(conn),
+          fetchAreaRegistry(conn),
+          fetchStateTranslations(conn),
+        ]);
 
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
@@ -307,15 +332,25 @@ export class EntitiesView {
       if (localizeResult.status === "fulfilled") {
         this.localize = localizeResult.value;
       } else {
-        log(
-          `Failed to fetch state translations: ${String(localizeResult.reason)}`,
-        );
+        log(`Failed to fetch state translations: ${String(localizeResult.reason)}`);
+      }
+
+      if (deviceResult.status === "fulfilled") {
+        this.deviceMap = new Map(deviceResult.value.map((d) => [d.id, d]));
+        log(`Device registry loaded: ${this.deviceMap.size} entries`);
+      } else {
+        log(`Failed to fetch device registry: ${String(deviceResult.reason)}`);
+      }
+
+      if (areaResult.status === "fulfilled") {
+        this.areaMap = new Map(areaResult.value.map((a) => [a.area_id, a]));
+        log(`Area registry loaded: ${this.areaMap.size} entries`);
+      } else {
+        log(`Failed to fetch area registry: ${String(areaResult.reason)}`);
       }
 
       if (registryResult.status === "rejected") {
-        log(
-          `Failed to fetch entity registry: ${String(registryResult.reason)}`,
-        );
+        log(`Failed to fetch entity registry: ${String(registryResult.reason)}`);
         this.showStatus("Failed to load entity registry");
         return;
       }
@@ -345,9 +380,8 @@ export class EntitiesView {
       const entries = await fetchEntityRegistry(conn);
       if (this.conn !== conn) return;
       this.registryEntries = entries;
-      // Rebuild the full list with current states
       this.buildAllMenuItems();
-      this.applyCurrentFilter();
+      this.rebuildAndDisplay();
     } catch (err) {
       log(`Failed to refetch entity registry: ${String(err)}`);
     }
@@ -357,22 +391,19 @@ export class EntitiesView {
 
   private handleEntityUpdate(allEntities: HassEntities): void {
     this.entityStates = allEntities;
+    this.buildAllMenuItems();
 
     if (this.isFirstEntityUpdate) {
       this.isFirstEntityUpdate = false;
-      this.buildAllMenuItems();
-      // Don't show the full list — wait for the user to type a search query
-      this.filteredItems = [];
-      this.showSearchPrompt();
+      this.rebuildAndDisplay();
       return;
     }
 
-    // Incremental updates — rebuild items but only update view if filtering
-    this.buildAllMenuItems();
-    if (this.filterText.length > 0) {
-      this.applyCurrentFilter();
-    }
+    // Incremental updates — refresh the displayed list
+    this.rebuildAndDisplay();
   }
+
+  // ── Item building ─────────────────────────────────────────────────────────
 
   private buildAllMenuItems(): void {
     const items: SearchableMenuItem[] = [];
@@ -389,17 +420,6 @@ export class EntitiesView {
       items.push(this.buildMenuItem(entry, entity));
     }
 
-    // Sort: entities with a device first, then alphabetically by title
-    const hasDevice = new Set<string>();
-    for (const entry of this.registryEntries) {
-      if (entry.device_id != null) hasDevice.add(entry.entity_id);
-    }
-    items.sort((a, b) => {
-      const aHas = hasDevice.has(a.id) ? 0 : 1;
-      const bHas = hasDevice.has(b.id) ? 0 : 1;
-      if (aHas !== bHas) return aHas - bHas;
-      return a.title.localeCompare(b.title);
-    });
     this.allMenuItems = items;
   }
 
@@ -423,6 +443,21 @@ export class EntitiesView {
     const descParts = [stateDisplay, entry.platform, domain].filter(Boolean);
     const description = descParts.join(" · ");
 
+    // Resolve device and area for grouping
+    const device = entry.device_id ? this.deviceMap.get(entry.device_id) : undefined;
+    const deviceName = device ? computeDeviceName(device) : "";
+
+    // Area: prefer entity's area_id, fall back to device's area_id
+    const areaId = entry.area_id ?? device?.area_id ?? null;
+    const area = areaId ? this.areaMap.get(areaId) : undefined;
+    const areaName = area?.name ?? "";
+
+    // Integration: localized platform name
+    const integrationName = entry.platform
+      ? entry.platform.charAt(0).toUpperCase() +
+        entry.platform.slice(1).replace(/_/g, " ")
+      : "";
+
     // Searchable fields for the two-phase algorithm
     const searchFields: string[] = [
       name,
@@ -431,7 +466,8 @@ export class EntitiesView {
       domain,
       stateDisplay,
     ];
-    if (entry.area_id) searchFields.push(entry.area_id);
+    if (areaName) searchFields.push(areaName);
+    if (deviceName) searchFields.push(deviceName);
 
     // Compute icon from entity state if available, fallback to domain
     const icon = entity ? resolveEntityIcon(entity) : "󰋙";
@@ -444,58 +480,106 @@ export class EntitiesView {
       action: { type: "noop" },
       keywords: [entry.entity_id, entry.platform, domain],
       searchFields,
+      domain,
+      deviceName,
+      areaName,
+      integrationName,
+      // group is assigned dynamically in applyGrouping()
+      group: undefined,
     };
+  }
+
+  // ── Grouping & sorting ────────────────────────────────────────────────────
+
+  /** Apply current group mode to items, set group labels, and sort */
+  private applyGrouping(items: readonly SearchableMenuItem[]): SearchableMenuItem[] {
+    const s = this.strings.entities;
+    const ungroupedLabels = new Set([
+      s.ungroupedDevice,
+      s.ungroupedDomain,
+      s.ungroupedArea,
+      s.ungroupedIntegration,
+    ]);
+
+    const grouped = items.map((item): SearchableMenuItem => {
+      let group: string;
+      switch (this.groupMode) {
+        case "area":
+          group = item.areaName || s.ungroupedArea;
+          break;
+        case "device":
+          group = item.deviceName || s.ungroupedDevice;
+          break;
+        case "integration":
+          group = item.integrationName || s.ungroupedIntegration;
+          break;
+        case "domain":
+          // Capitalize domain: "light" → "Light", "binary_sensor" → "Binary sensor"
+          group = item.domain
+            ? item.domain.charAt(0).toUpperCase() +
+              item.domain.slice(1).replace(/_/g, " ")
+            : s.ungroupedDomain;
+          break;
+      }
+      return { ...item, group };
+    });
+
+    // Sort: groups alphabetically, ungrouped to bottom, items alphabetical within group
+    grouped.sort((a, b) => {
+      const aUngrouped = ungroupedLabels.has(a.group!) ? 1 : 0;
+      const bUngrouped = ungroupedLabels.has(b.group!) ? 1 : 0;
+      if (aUngrouped !== bUngrouped) return aUngrouped - bUngrouped;
+
+      // Alphabetical group order
+      const groupCmp = (a.group ?? "").localeCompare(b.group ?? "");
+      if (groupCmp !== 0) return groupCmp;
+
+      // Alphabetical item order within group
+      return a.title.localeCompare(b.title);
+    });
+
+    return grouped;
+  }
+
+  /** Rebuild and display the current item list with grouping applied */
+  private rebuildAndDisplay(): void {
+    if (this.filterText.length === 0) {
+      // No filter — show all items grouped
+      this.filteredItems = this.applyGrouping(this.allMenuItems);
+    } else {
+      // Filter active — search then group results
+      const searchResults = twoPhaseSearch(
+        this.allMenuItems,
+        this.filterText,
+        (item) => item.searchFields,
+        FUSE_KEYS,
+      );
+      this.filteredItems = this.applyGrouping(searchResults);
+    }
+
+    if (this.statusVisible) {
+      this.root.remove(this.statusText.id);
+      this.statusVisible = false;
+    }
+    this.menuList.setFilteredItems(this.filteredItems);
+    this.updatePageIndicator();
+  }
+
+  // ── Grouping toggle ───────────────────────────────────────────────────────
+
+  private cycleGroupMode(): void {
+    const currentIdx = GROUP_MODES.indexOf(this.groupMode);
+    this.groupMode = GROUP_MODES[(currentIdx + 1) % GROUP_MODES.length];
+    log(`Group mode changed to: ${this.groupMode}`);
+    this.rebuildAndDisplay();
   }
 
   // ── Search / Filter ───────────────────────────────────────────────────────
 
-  private applyCurrentFilter(): void {
-    if (this.filterText.length === 0) {
-      this.filteredItems = [];
-      this.menuList.setFilteredItems([]);
-      this.showSearchPrompt();
-      return;
-    }
-
-    this.filteredItems = twoPhaseSearch(
-      this.allMenuItems,
-      this.filterText,
-      (item) => item.searchFields,
-      FUSE_KEYS,
-    );
-
-    if (this.statusVisible) {
-      this.root.remove(this.statusText.id);
-      this.statusVisible = false;
-    }
-    this.menuList.setFilteredItems(this.filteredItems);
-    this.updatePageIndicator();
-  }
-
   private handleFilterChange(filter: string): void {
     this.filterText = filter;
     this.updateFilterBar(filter);
-
-    if (filter.trim().length < 2) {
-      this.filteredItems = [];
-      this.menuList.setFilteredItems([]);
-      this.showSearchPrompt();
-      return;
-    }
-
-    this.filteredItems = twoPhaseSearch(
-      this.allMenuItems,
-      filter,
-      (item) => item.searchFields,
-      FUSE_KEYS,
-    );
-
-    if (this.statusVisible) {
-      this.root.remove(this.statusText.id);
-      this.statusVisible = false;
-    }
-    this.menuList.setFilteredItems(this.filteredItems);
-    this.updatePageIndicator();
+    this.rebuildAndDisplay();
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
@@ -507,6 +591,8 @@ export class EntitiesView {
     this.unsubRegistry = null;
     this.localize = null;
     this.registryEntries = [];
+    this.deviceMap = new Map();
+    this.areaMap = new Map();
     this.entityStates = {};
     this.allMenuItems = [];
     this.filteredItems = [];
@@ -517,10 +603,25 @@ export class EntitiesView {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private updateFilterBar(filter: string): void {
+    const modeLabel = this.groupModeLabel();
     if (filter.length === 0) {
-      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")}`;
+      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(modeLabel))}`;
     } else {
-      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)}`;
+      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(modeLabel))}`;
+    }
+  }
+
+  private groupModeLabel(): string {
+    const s = this.strings.entities;
+    switch (this.groupMode) {
+      case "device":
+        return s.groupByDevice;
+      case "domain":
+        return s.groupByDomain;
+      case "area":
+        return s.groupByArea;
+      case "integration":
+        return s.groupByIntegration;
     }
   }
 
@@ -529,7 +630,6 @@ export class EntitiesView {
     const totalPages = this.menuList.totalPages;
 
     if (totalPages <= 1) {
-      // Hide page indicator, show count only if meaningful
       if (this.pageIndicatorVisible) {
         this.root.remove(this.pageIndicator.id);
         this.pageIndicatorVisible = false;
@@ -562,24 +662,6 @@ export class EntitiesView {
     }
   }
 
-  /** Show a search prompt when no query is active. */
-  private showSearchPrompt(): void {
-    const count = this.allMenuItems.length;
-    const message =
-      count > 0
-        ? this.strings.entities.searchPrompt(count)
-        : this.strings.entities.loading;
-    if (!this.statusVisible) {
-      this.root.insertBefore(this.statusText, this.menuList);
-      this.statusVisible = true;
-    }
-    this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
-    if (this.pageIndicatorVisible) {
-      this.root.remove(this.pageIndicator.id);
-      this.pageIndicatorVisible = false;
-    }
-  }
-
   private createMenuList(items: readonly MenuItem[]): MenuList {
     return new MenuList(this.renderer, {
       id: "entities-list",
@@ -592,9 +674,29 @@ export class EntitiesView {
       },
       onFilterChange: (filter) => this.handleFilterChange(filter),
       onPageChange: () => this.updatePageIndicator(),
-      onEscape: () => this.callbacks.onBack(),
+      onEscape: () => {
+        if (this.filterText.length > 0) {
+          this.filterText = "";
+          this.updateFilterBar("");
+          this.rebuildAndDisplay();
+          return;
+        }
+        this.callbacks.onBack();
+      },
       onBack: () => this.callbacks.onBack(),
+      onKeyPress: (key) => this.handleKeyPress(key),
       wrapSelection: false,
     });
+  }
+
+  /** Handle extra key bindings not consumed by MenuList */
+  private handleKeyPress(key: KeyEvent): boolean {
+    // Ctrl+G: cycle grouping mode
+    if (key.name === "g" && key.ctrl) {
+      this.cycleGroupMode();
+      this.updateFilterBar(this.filterText);
+      return true;
+    }
+    return false;
   }
 }
