@@ -24,48 +24,12 @@ import {
   translateEntityState,
   type LocalizeFunc,
 } from "../data/stateTranslation.js";
+import { resolveEntityIcon } from "../data/iconResolver.js";
 
 const log = (msg: string) => console.error(`[ha-tui:DashboardView] ${msg}`);
 
 /** Maximum entities to show; expands to accommodate more favorites. */
 const DEFAULT_LIMIT = 8;
-
-/**
- * Nerd Font glyph per HA domain.
- * Mirrors the MDI icon mapping in the HA frontend, adapted for terminal rendering.
- */
-const DOMAIN_ICONS: Record<string, string> = {
-  light: "󰌵",
-  switch: "󰔡",
-  sensor: "󰓅",
-  binary_sensor: "󰝣",
-  climate: "󰔏",
-  media_player: "󰋹",
-  person: "󰀄",
-  device_tracker: "󰍎",
-  automation: "󱙵",
-  script: "󱃺",
-  scene: "󰠗",
-  input_boolean: "󰔡",
-  cover: "󱢐",
-  lock: "󰌾",
-  fan: "󰈐",
-  vacuum: "󱦚",
-  weather: "󰖐",
-  button: "󰏠",
-  update: "󰚰",
-  number: "󰛯",
-  select: "󰍦",
-  input_number: "󰎡",
-  input_select: "󰍦",
-  input_text: "󰚒",
-  timer: "󰔛",
-  counter: "󰃬",
-  calendar: "󰃰",
-  camera: "󱤃",
-};
-
-const DEFAULT_ICON = "󰈚";
 
 // ---------------------------------------------------------------------------
 
@@ -446,10 +410,9 @@ export class DashboardView {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private entityToMenuItem(entity: HassEntity): MenuItem {
-    const domain = entity.entity_id.split(".")[0] ?? "";
     return {
       id: entity.entity_id,
-      icon: DOMAIN_ICONS[domain] ?? DEFAULT_ICON,
+      icon: resolveEntityIcon(entity),
       title: entity.attributes.friendly_name ?? entity.entity_id,
       description: this.formatDescription(entity),
       action: { type: "noop" },
