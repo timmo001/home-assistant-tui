@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import type { CliRenderer } from "@opentui/core";
+import type { Connection } from "home-assistant-js-websocket";
 import type { ViewId, MenuItem, MenuAction } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
@@ -8,6 +9,7 @@ import { menuItemsById, submenus } from "../menu.js";
 import type { CommandRunnerService } from "../services/CommandRunner.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
+import { DashboardView } from "./DashboardView.js";
 import { VariantPopup } from "./VariantPopup.js";
 import { ConnectionForm } from "./ConnectionForm.js";
 import type { ConnectionFormValues } from "./ConnectionForm.js";
@@ -54,6 +56,7 @@ export class App {
   private commandRunner: CommandRunnerService;
   private mainMenu: MainMenu;
   private submenuView: SubmenuView;
+  private dashboardView: DashboardView;
   private variantPopup: VariantPopup;
   private connectionForm: ConnectionForm;
   private activeView: ViewId = "main";
@@ -91,6 +94,15 @@ export class App {
       },
     });
 
+    this.dashboardView = new DashboardView(deps.renderer, deps.theme, deps.strings, {
+      onBack: () => this.popView(),
+      rootTitle: options.title ?? deps.strings.app.menuFallbackTitle,
+      onTitleChange: (parts) => {
+        const suffix = parts.slice(1).join(" \u203A ");
+        setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+      },
+    });
+
     this.variantPopup = new VariantPopup(deps.renderer, deps.theme, deps.strings, {
       onSelect: (action) => {
         queueMicrotask(() => this.focusActiveView());
@@ -117,6 +129,7 @@ export class App {
     // --- Hide all views initially ---
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
+    this.dashboardView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     // --- Global keyboard ---
@@ -173,6 +186,12 @@ export class App {
   updateConnectionInfo(info: ConnectionInfo): void {
     this.mainMenu.updateConnectionInfo(info);
     this.submenuView.updateConnectionInfo(info);
+    this.dashboardView.updateConnectionInfo(info);
+  }
+
+  /** Provide or clear the active WebSocket connection for views that need it. */
+  updateConnection(conn: Connection | null): void {
+    this.dashboardView.setConnection(conn);
   }
 
   /**
@@ -209,6 +228,7 @@ export class App {
 
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
+    this.dashboardView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     this.activeView = viewId;
@@ -222,6 +242,10 @@ export class App {
       case "submenu":
         this.submenuView.setVisible(true);
         this.submenuView.resetAndFocus();
+        break;
+      case "dashboard":
+        this.dashboardView.setVisible(true);
+        this.dashboardView.resetAndFocus();
         break;
       case "setup":
         setTerminalTitle(
@@ -299,6 +323,9 @@ export class App {
       case "submenu":
         this.submenuView.focus();
         break;
+      case "dashboard":
+        this.dashboardView.focus();
+        break;
       case "setup":
         this.connectionForm.focus();
         break;
@@ -312,6 +339,9 @@ export class App {
         break;
       case "submenu":
         this.submenuView.blur();
+        break;
+      case "dashboard":
+        this.dashboardView.blur();
         break;
       case "setup":
         this.connectionForm.blur();

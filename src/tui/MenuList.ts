@@ -21,7 +21,8 @@ interface MenuRow {
   readonly iconText: TextRenderable;
   readonly titleText: TextRenderable;
   readonly descText: TextRenderable;
-  readonly item: MenuItem;
+  /** Mutable so in-place patches can keep the stored item in sync with the rendered content */
+  item: MenuItem;
 }
 
 /** Configuration for the {@link MenuList} component */
@@ -137,6 +138,56 @@ export class MenuList extends ScrollBoxRenderable {
     if (this._filterText.length === 0) return;
     this._filterText = "";
     this._applyFilter();
+  }
+
+  /**
+   * Update a single item's title and/or description in-place.
+   *
+   * Does not reset selection, scroll position, or the filter query.
+   * If the item is currently filtered out it is still updated in `_allItems`
+   * so the next filter pass reflects the new content.
+   */
+  patchItemById(
+    id: string,
+    patch: Partial<Pick<MenuItem, "title" | "description">>,
+  ): void {
+    // Update in _allItems (always, so Fuse and future filter passes see fresh data)
+    const allIdx = this._allItems.findIndex((i) => i.id === id);
+    if (allIdx === -1) return;
+
+    const updatedItem: MenuItem = { ...this._allItems[allIdx], ...patch };
+    this._allItems = [
+      ...this._allItems.slice(0, allIdx),
+      updatedItem,
+      ...this._allItems.slice(allIdx + 1),
+    ];
+    this._fuse = this._createFuse(this._allItems);
+
+    // Update in the current filtered view if the item is visible
+    const itemIdx = this._items.findIndex((i) => i.id === id);
+    if (itemIdx === -1) return;
+
+    this._items = [
+      ...this._items.slice(0, itemIdx),
+      updatedItem,
+      ...this._items.slice(itemIdx + 1),
+    ];
+
+    const row = this._rows[itemIdx];
+    if (!row) return;
+
+    row.item = updatedItem;
+
+    const isSelected = itemIdx === this._selectedIndex;
+    const th = this._theme;
+    const textColor = isSelected ? th.accent : th.fg;
+
+    if (patch.title !== undefined) {
+      row.titleText.content = t`${fg(textColor)(updatedItem.title)}`;
+    }
+    if (patch.description !== undefined) {
+      row.descText.content = t`${fg(th.fgMuted)(updatedItem.description)}`;
+    }
   }
 
   /** Whether a filter query is currently active */

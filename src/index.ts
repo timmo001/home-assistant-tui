@@ -100,7 +100,12 @@ const program = Effect.scoped(
       log("App created");
 
       // Subscribe to HA connection state and push updates to the header bar
-      ha.subscribe((info) => app.updateConnectionInfo(info));
+      ha.subscribe((info) => {
+        app.updateConnectionInfo(info);
+        app.updateConnection(
+          info.status === "connected" ? ha.getConnection() : null,
+        );
+      });
 
       // Only attempt connection if a token is configured
       if (configured) {

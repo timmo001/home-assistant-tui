@@ -27,10 +27,6 @@ function submenu(menuId: string): MenuItem["action"] {
   return { type: "submenu", menuId };
 }
 
-function noop(): MenuItem["action"] {
-  return { type: "noop" };
-}
-
 // --- Main menu ---
 
 const mainItems: readonly MenuItem[] = [
@@ -39,7 +35,7 @@ const mainItems: readonly MenuItem[] = [
     "󰋜",
     en.menu.dashboard.title,
     en.menu.dashboard.description,
-    noop(),
+    { type: "view", viewId: "dashboard" },
     undefined,
     ["home", "overview", "main", ":dash", ":home"],
   ),

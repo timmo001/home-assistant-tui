@@ -23,6 +23,7 @@ export interface HomeAssistantServiceI {
   readonly disconnect: Effect.Effect<void>;
   readonly subscribe: (cb: ConnectionListener) => () => void;
   readonly reconfigure: (config: HaTuiConfig) => Effect.Effect<void>;
+  readonly getConnection: () => Connection | null;
 }
 
 function makeHomeAssistantService(
@@ -139,6 +140,7 @@ function makeHomeAssistantService(
         emit({ url: newConfig.homeassistant.url });
         yield* connect;
       }),
+    getConnection: () => connection,
   };
 }
 
