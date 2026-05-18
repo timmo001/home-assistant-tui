@@ -59,33 +59,6 @@ homeassistant:
 
 Use **Settings > Connection** to change these values from within the TUI.
 
-## Views
-
-| ViewId | Description |
-|---|---|
-| `main` | Main menu with fuzzy search |
-| `dashboard` | Favorites and area cards from HA frontend config |
-| `entities` | All entities grouped by domain with paging |
-| `areaEntities` | Entities filtered to a single area |
-| `submenu` | Nested submenu (e.g. Settings) |
-| `setup` | First-run connection form |
-
-## Home Assistant types
-
-All HA types come from [`home-assistant-js-websocket`](https://github.com/home-assistant/home-assistant-js-websocket) — the official HA client library. The [`../frontend`](../frontend) repo is the authoritative reference for types, helpers, and patterns beyond what the package exports directly.
-
-## Action types
-
-| Type | Behaviour |
-|---|---|
-| `command` | Suspend TUI, run with inherited stdio, optionally wait for keypress |
-| `silent` | Run in background, capture output silently |
-| `notify` | Run in background with toast progress/success/error |
-| `view` | Navigate to a TUI view |
-| `submenu` | Open a nested submenu |
-| `noop` | No-op — for placeholder/work-in-progress menu items |
-| `quit` | Exit the application |
-
 ## Tech stack
 
 - **Runtime**: [Bun](https://bun.sh)
