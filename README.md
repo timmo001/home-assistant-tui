@@ -1,14 +1,15 @@
-# starter-tui-menu
+# Home Assistant TUI
 
-A barebones TUI menu template built with [OpenTUI](https://github.com/ArcticGlacier/opentui), [Effect](https://effect.website), and [Fuse.js](https://www.fusejs.io/). Designed as a starting point for building terminal menu applications with Bun.
+A terminal UI for [Home Assistant](https://www.home-assistant.io/), built with [OpenTUI](https://github.com/ArcticGlacier/opentui), [Effect](https://effect.website), and [Fuse.js](https://www.fusejs.io/).
 
 ## Features
 
+- Live connection state header (status, URL, HA version, user, last update)
+- First-run setup flow with a shared connection form reused by Settings > Connection
 - Fuzzy type-to-filter search (Fuse.js with weighted keys)
 - Nested submenu navigation with breadcrumb trail
 - Variant popup for multi-action menu items
 - Toast notifications (info/success/error with auto-dismiss)
-- Command execution: suspended (with stdio), silent (background), notify (toast feedback)
 - Catppuccin Mocha theme with a `Theme` interface ready for custom loaders
 - CLI subcommand resolution with greedy longest-match
 
@@ -19,56 +20,58 @@ bun install
 bun run dev
 ```
 
+On first launch, a setup form prompts for your Home Assistant URL and a [long-lived access token](https://www.home-assistant.io/docs/authentication/#your-account-profile). Config is saved to `~/.local/share/home-assistant-tui/config.yml`.
+
 ## Build
 
 Compile to a standalone binary:
 
 ```sh
 bun run build
-# outputs: dist/starter-tui-menu
+# outputs: dist/home-assistant-tui
 ```
+
+## Configuration
+
+`~/.local/share/home-assistant-tui/config.yml`:
+
+```yaml
+homeassistant:
+  url: http://homeassistant.local:8123
+  token: <long-lived-access-token>
+```
+
+Use **Settings > Connection** to change these values from within the TUI.
 
 ## Structure
 
 ```
 src/
-├── index.ts              Entry point
-├── flags.ts              CLI flag parsing and subcommand resolution
-├── menu.ts               Menu item definitions and registries
-├── theme.ts              Theme interface and default theme
-├── types.ts              Shared type definitions
+├── index.ts                   Entry point — config check, HA service, app bootstrap
+├── config.ts                  YAML config load/save, isConfigured()
+├── flags.ts                   CLI flag parsing and subcommand resolution
+├── menu.ts                    Menu item definitions and registries
+├── theme.ts                   Theme interface and default (Catppuccin Mocha)
+├── types.ts                   Shared types: MenuItem, ConnectionInfo, ViewId, etc.
 ├── services/
-│   └── CommandRunner.ts  Shell command execution (suspend/silent/notify)
+│   ├── HomeAssistant.ts       HA WebSocket service (home-assistant-js-websocket)
+│   └── CommandRunner.ts       Shell command execution (suspend/silent/notify)
 └── tui/
-    ├── App.ts            View stack, action dispatch, variant popup routing
-    ├── MainMenu.ts       Main menu view with filter bar
-    ├── SubmenuView.ts    Generic nested submenu with breadcrumbs
-    ├── MenuList.ts       Reusable fuzzy-filterable scroll list
-    ├── VariantPopup.ts   Centred popup for variant selection
-    ├── Toast.ts          Single-slot toast notification overlay
-    ├── breadcrumb.ts     Breadcrumb trail formatter
-    └── helpBar.ts        Auto-wrapping keybind help bar
+    ├── App.ts                 View stack, action dispatch, connection state routing
+    ├── MainMenu.ts            Main menu view — header + filter + list + help
+    ├── SubmenuView.ts         Nested submenu view — header + breadcrumb + list + help
+    ├── ConnectionForm.ts      Shared URL + token form (first-run and settings)
+    ├── MenuList.ts            Reusable fuzzy-filterable scroll list
+    ├── VariantPopup.ts        Centred popup for variant selection
+    ├── Toast.ts               Single-slot toast notification overlay
+    ├── breadcrumb.ts          Breadcrumb trail formatter
+    ├── headerBar.ts           Connection state header formatter
+    └── helpBar.ts             Auto-wrapping keybind help bar
 ```
 
-## Adding menu items
+## Home Assistant types
 
-Edit `src/menu.ts`. Use the helper functions to define items:
-
-```ts
-// Simple command
-item("my-item", "", "My Item", "Description", cmd("echo hello"))
-
-// With variants (popup with alternatives)
-item("my-item", "", "My Item", "Description", cmd("echo default"), [
-  { label: "Option A", description: "First option", action: cmd("echo a") },
-  { label: "Option B", description: "Second option", action: cmd("echo b") },
-])
-
-// Submenu
-item("parent", "", "Parent", "Opens a submenu", submenu("parent"))
-```
-
-Register submenus in the `submenus` and `submenuTitles` maps, and call `registerItems()` for flat ID lookup.
+All HA types come from [`home-assistant-js-websocket`](https://github.com/home-assistant/home-assistant-js-websocket) — the official HA client library. The [`../frontend`](../frontend) repo is the authoritative reference for types, helpers, and patterns beyond what the package exports directly.
 
 ## Action types
 
@@ -79,14 +82,8 @@ Register submenus in the `submenus` and `submenuTitles` maps, and call `register
 | `notify` | Run in background with toast progress/success/error |
 | `view` | Navigate to a TUI view |
 | `submenu` | Open a nested submenu |
+| `noop` | No-op — for placeholder/work-in-progress menu items |
 | `quit` | Exit the application |
-
-## Extending
-
-- **Theme**: Replace `DEFAULT_THEME` in `theme.ts` with a dynamic loader. The `Theme` interface is stable.
-- **Views**: Add new `ViewId` values to `types.ts`, create view classes, wire them in `App.ts`.
-- **Services**: Add Effect service layers in `index.ts` and inject through `AppDeps`.
-- **Menus**: Add items to arrays in `menu.ts` and register in the maps.
 
 ## Tech stack
 
@@ -94,3 +91,5 @@ Register submenus in the `submenus` and `submenuTitles` maps, and call `register
 - **TUI framework**: [@opentui/core](https://github.com/ArcticGlacier/opentui)
 - **Effect system**: [Effect](https://effect.website) v4
 - **Fuzzy search**: [Fuse.js](https://www.fusejs.io/)
+- **HA client**: [home-assistant-js-websocket](https://github.com/home-assistant/home-assistant-js-websocket)
+- **Config**: [yaml](https://eemeli.org/yaml/)

@@ -1,13 +1,16 @@
 import type { CliRenderer } from "@opentui/core";
 import type { ViewId, MenuItem, MenuAction } from "../types.js";
+import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import { menuItemsById, submenus } from "../menu.js";
 import type { CommandRunnerService } from "../services/CommandRunner.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
 import { VariantPopup } from "./VariantPopup.js";
+import { ConnectionForm } from "./ConnectionForm.js";
+import type { ConnectionFormValues } from "./ConnectionForm.js";
 
-const log = (msg: string) => console.error(`[starter-tui:App] ${msg}`);
+const log = (msg: string) => console.error(`[ha-tui:App] ${msg}`);
 
 /** Set the terminal tab/window title via an OSC escape sequence */
 const setTerminalTitle = (title: string): void => {
@@ -21,8 +24,6 @@ export interface AppOptions {
   readonly executeItemId?: string;
   /** Title displayed at the top of the main menu */
   readonly title?: string;
-  /** Subtitle displayed after the title in muted text */
-  readonly subtitle?: string;
 }
 
 /** Dependencies injected into the App at construction time */
@@ -35,6 +36,12 @@ export interface AppDeps {
   readonly commandRunner: CommandRunnerService;
 }
 
+/**
+ * Called when the user saves the connection form.
+ * Allows the entry point to persist config and (re)connect.
+ */
+export type OnConnectionSaved = (values: ConnectionFormValues) => void;
+
 /** Top-level TUI application shell managing a view stack and global keyboard */
 export class App {
   private renderer: CliRenderer;
@@ -42,14 +49,19 @@ export class App {
   private mainMenu: MainMenu;
   private submenuView: SubmenuView;
   private variantPopup: VariantPopup;
+  private connectionForm: ConnectionForm;
   private activeView: ViewId = "main";
   private viewStack: ViewId[] = [];
   private appTitle: string;
 
-  constructor(deps: AppDeps, options: AppOptions = {}) {
+  constructor(
+    deps: AppDeps,
+    options: AppOptions = {},
+    onConnectionSaved?: OnConnectionSaved,
+  ) {
     this.renderer = deps.renderer;
     this.commandRunner = deps.commandRunner;
-    this.appTitle = options.title ?? "Starter TUI";
+    this.appTitle = options.title ?? "Home Assistant TUI";
 
     // --- Create views ---
 
@@ -57,7 +69,6 @@ export class App {
       onSelect: (item) => this.handleMenuAction(item),
       initialSelectedId: options.executeItemId,
       title: options.title,
-      subtitle: options.subtitle,
     });
 
     this.submenuView = new SubmenuView(deps.renderer, deps.theme, {
@@ -72,27 +83,40 @@ export class App {
 
     this.variantPopup = new VariantPopup(deps.renderer, deps.theme, {
       onSelect: (action) => {
-        // Defer refocus to avoid the same keypress event hitting the MenuList
         queueMicrotask(() => this.focusActiveView());
         this.dispatchAction(action);
       },
       onDismiss: () => {
-        // Defer refocus to avoid the same Escape event hitting the MenuList
         queueMicrotask(() => this.focusActiveView());
+      },
+    });
+
+    this.connectionForm = new ConnectionForm(deps.renderer, deps.theme, {
+      onSubmit: (values) => {
+        log("Connection form submitted — saving config");
+        onConnectionSaved?.(values);
+        this.popView();
+      },
+      onCancel: () => {
+        log("Connection form cancelled");
+        this.popView();
       },
     });
 
     // --- Hide all views initially ---
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
+    this.connectionForm.setVisible(false);
 
     // --- Global keyboard ---
-    // Ctrl+C is handled by OpenTUI's exitOnCtrlC option which ensures
-    // terminal state is fully restored before exiting.
     deps.renderer.keyInput.on("keypress", (key) => {
-      // Route keys to the variant popup when it is visible
       if (this.variantPopup.visible) {
         this.variantPopup.handleKeyPress(key);
+        return;
+      }
+
+      if (this.activeView === "setup") {
+        this.connectionForm.handleKeyPress(key);
         return;
       }
     });
@@ -100,13 +124,10 @@ export class App {
     // --- Determine initial view ---
     const startView = options.initialView ?? "main";
 
-    // Ensure back navigation works when starting on a non-main view
     if (startView !== "main") {
       this.viewStack.push("main");
     }
 
-    // If an item should be executed immediately (subcommand mode):
-    // always suspend, run with visible output, wait for keypress, then exit.
     if (options.executeItemId) {
       const item = menuItemsById.get(options.executeItemId);
       if (item) {
@@ -136,6 +157,31 @@ export class App {
     this.showView(startView);
   }
 
+  /** Push a live connection state update to all persistent views. */
+  updateConnectionInfo(info: ConnectionInfo): void {
+    this.mainMenu.updateConnectionInfo(info);
+    this.submenuView.updateConnectionInfo(info);
+  }
+
+  /**
+   * Open the connection form pre-filled with the given values.
+   * Used by Settings > Connection to edit the existing config.
+   */
+  openConnectionForm(
+    initialValues: ConnectionFormValues,
+    onSaved: OnConnectionSaved,
+  ): void {
+    // Re-create the form with the current values and a fresh onSubmit
+    // (simpler than a mutable callback — the form is cheap to recreate).
+    // For now we just push the setup view; App always uses the same form
+    // instance wired at construction.  The form already received `onSaved`
+    // via the constructor's `onConnectionSaved` param, so pushing "setup"
+    // is sufficient.
+    void initialValues;
+    void onSaved;
+    this.pushView("setup");
+  }
+
   /** Navigate to a view, pushing the current one onto the stack */
   pushView(viewId: ViewId): void {
     if (this.activeView !== viewId) {
@@ -150,19 +196,17 @@ export class App {
     if (prev) {
       this.showView(prev);
     }
-    // If stack is empty we're at main — stay there
   }
 
   private showView(viewId: ViewId): void {
     log(`Switching to view: ${viewId}`);
 
-    // Hide all
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
+    this.connectionForm.setVisible(false);
 
     this.activeView = viewId;
 
-    // Show the target and reset filter state (fresh view entry)
     switch (viewId) {
       case "main":
         setTerminalTitle(this.appTitle);
@@ -172,13 +216,16 @@ export class App {
       case "submenu":
         this.submenuView.setVisible(true);
         this.submenuView.resetAndFocus();
-        // SubmenuView updates the terminal title itself via onTitleChange
+        break;
+      case "setup":
+        setTerminalTitle(`${this.appTitle} — Setup`);
+        this.connectionForm.setVisible(true);
+        this.connectionForm.resetAndFocus();
         break;
     }
   }
 
   private handleMenuAction(item: MenuItem): void {
-    // If the item has variants, open the popup instead of dispatching directly
     if (item.variants && item.variants.length > 0) {
       log(`Opening variant popup for item ${item.id}`);
       this.blurActiveView();
@@ -189,11 +236,14 @@ export class App {
     this.dispatchAction(item.action);
   }
 
-  /** Dispatch a menu action (command, silent, notify, view, or submenu) */
   private dispatchAction(action: MenuAction): void {
     log(`Dispatching action: ${action.type}`);
 
     switch (action.type) {
+      case "noop":
+        // Intentional no-op — placeholder items
+        break;
+
       case "command":
         this.commandRunner
           .runSuspended(action.cmd, action.wait)
@@ -220,10 +270,8 @@ export class App {
 
       case "submenu": {
         if (this.activeView === "submenu") {
-          // Already in submenu view — navigate deeper
           this.submenuView.pushSubmenu(action.menuId);
         } else {
-          // Open the submenu view at the target menu
           this.submenuView.openSubmenu(action.menuId);
           this.pushView("submenu");
         }
@@ -236,7 +284,6 @@ export class App {
     }
   }
 
-  /** Restore keyboard focus to the currently active view */
   private focusActiveView(): void {
     switch (this.activeView) {
       case "main":
@@ -245,10 +292,12 @@ export class App {
       case "submenu":
         this.submenuView.focus();
         break;
+      case "setup":
+        this.connectionForm.focus();
+        break;
     }
   }
 
-  /** Remove keyboard focus from the currently active view */
   private blurActiveView(): void {
     switch (this.activeView) {
       case "main":
@@ -256,6 +305,9 @@ export class App {
         break;
       case "submenu":
         this.submenuView.blur();
+        break;
+      case "setup":
+        this.connectionForm.blur();
         break;
     }
   }

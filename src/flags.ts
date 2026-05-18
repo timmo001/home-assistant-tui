@@ -84,22 +84,21 @@ export function resolveSubcommand(
 
 /** Print help text */
 export function printHelp(): void {
-  console.log(`Usage: starter-tui-menu [subcommand...] [options]
+  console.log(`Usage: home-assistant-tui [subcommand...] [options]
 
-Launch the TUI menu. Without a subcommand, opens the main menu.
+Launch the Home Assistant TUI. Without a subcommand, opens the main menu.
 
 Subcommands can be specified as space-separated paths that resolve
 against the menu registry:
 
-  starter-tui-menu settings              Open the settings submenu
-  starter-tui-menu settings display      Open display settings
-  starter-tui-menu greet                 Execute the greet action
+  home-assistant-tui settings             Open the settings submenu
+  home-assistant-tui settings connection  Open connection settings
+  home-assistant-tui dashboard            Open the dashboard
 
 Options:
   --help, -h  Show this help message
 
 Examples:
-  starter-tui-menu                       Main menu
-  starter-tui-menu settings display      Display settings submenu
-  starter-tui-menu system-info           Execute system info directly`);
+  home-assistant-tui                      Main menu
+  home-assistant-tui settings             Settings submenu`);
 }

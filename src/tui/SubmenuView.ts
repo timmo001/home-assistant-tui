@@ -6,10 +6,12 @@ import {
   fg,
 } from "@opentui/core";
 import type { MenuItem } from "../types.js";
+import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import { submenus, submenuTitles } from "../menu.js";
 import { formatBreadcrumb } from "./breadcrumb.js";
 import { formatHelpBar, GLOBAL_HELP, type HelpEntry } from "./helpBar.js";
+import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
 
 /** Help entries for submenu views */
@@ -47,6 +49,7 @@ export class SubmenuView {
   private callbacks: SubmenuViewOptions;
 
   private root: BoxRenderable;
+  private headerBar: TextRenderable;
   private titleText: TextRenderable;
   private filterBar: TextRenderable;
   private menuList: MenuList;
@@ -74,6 +77,18 @@ export class SubmenuView {
       height: "100%",
       padding: 1,
     });
+
+    // Header bar — connection state (kept in sync by App)
+    const disconnectedInfo: ConnectionInfo = {
+      status: "disconnected",
+      url: "",
+    };
+    this.headerBar = new TextRenderable(renderer, {
+      id: "submenu-header",
+      content: formatHeaderBar(theme, disconnectedInfo),
+      marginBottom: 1,
+    });
+    this.root.add(this.headerBar);
 
     // Title (dynamic based on submenu depth)
     this.titleText = new TextRenderable(renderer, {
@@ -109,6 +124,11 @@ export class SubmenuView {
     renderer.on("resize", () => {
       this.helpBar.content = formatHelpBar(this.theme, HELP);
     });
+  }
+
+  /** Push a live connection info update to the header bar. */
+  updateConnectionInfo(info: ConnectionInfo): void {
+    this.headerBar.content = formatHeaderBar(this.theme, info);
   }
 
   /** Open a submenu as the root level (resets the navigation stack) */

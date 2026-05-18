@@ -1,7 +1,29 @@
+// --- Connection types ---
+
+/** Live state of the Home Assistant WebSocket connection */
+export type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "error";
+
+/**
+ * Snapshot of connection state shown in the header bar.
+ * Fields beyond `status` and `url` are populated after a successful connect.
+ */
+export interface ConnectionInfo {
+  readonly status: ConnectionStatus;
+  readonly url: string;
+  readonly haVersion?: string;
+  readonly userName?: string;
+  readonly lastUpdateAt?: Date;
+  readonly errorMessage?: string;
+}
+
 // --- Menu types ---
 
 /** Identifies a top-level TUI view for navigation */
-export type ViewId = "main" | "submenu";
+export type ViewId = "main" | "submenu" | "setup";
 
 /** Action that suspends the TUI and runs a command with inherited stdio */
 export interface CommandAction {
@@ -49,6 +71,11 @@ export interface SubmenuAction {
   readonly menuId: string;
 }
 
+/** Action that does nothing — for placeholder menu items */
+export interface NoopAction {
+  readonly type: "noop";
+}
+
 /** Action that exits the TUI */
 export interface QuitAction {
   readonly type: "quit";
@@ -61,6 +88,7 @@ export type MenuAction =
   | NotifyAction
   | ViewAction
   | SubmenuAction
+  | NoopAction
   | QuitAction;
 
 /** A selectable variant for a menu item offering an alternative action */

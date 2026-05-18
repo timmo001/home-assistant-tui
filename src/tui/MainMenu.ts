@@ -7,10 +7,14 @@ import {
   fg,
 } from "@opentui/core";
 import type { MenuItem } from "../types.js";
+import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import { mainMenuItems } from "../menu.js";
 import { formatHelpBar, GLOBAL_HELP, type HelpEntry } from "./helpBar.js";
+import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
+
+const log = (msg: string) => console.error(`[ha-tui:MainMenu] ${msg}`);
 
 /** Help entries for the main menu */
 const HELP: readonly HelpEntry[] = [
@@ -28,8 +32,6 @@ export interface MainMenuOptions {
   readonly initialSelectedId?: string;
   /** Title displayed at the top of the menu */
   readonly title?: string;
-  /** Subtitle displayed after the title in muted text */
-  readonly subtitle?: string;
 }
 
 /** Top-level menu rendered as a {@link MenuList} with type-to-filter */
@@ -39,6 +41,7 @@ export class MainMenu {
   private root: BoxRenderable;
   private menuList: MenuList;
   private filterBar: TextRenderable;
+  private headerBar: TextRenderable;
   private helpBar: TextRenderable;
   private callbacks: MainMenuOptions;
 
@@ -55,14 +58,23 @@ export class MainMenu {
       padding: 1,
     });
 
+    // Header bar — connection state + app name
+    const disconnectedInfo: ConnectionInfo = {
+      status: "disconnected",
+      url: "",
+    };
+    this.headerBar = new TextRenderable(renderer, {
+      id: "main-menu-header",
+      content: formatHeaderBar(theme, disconnectedInfo),
+      marginBottom: 1,
+    });
+    this.root.add(this.headerBar);
+
     // Title
-    const title = options.title ?? "Menu";
-    const subtitle = options.subtitle
-      ? fg(theme.fgMuted)(` — ${options.subtitle}`)
-      : "";
+    const title = options.title ?? "Home Assistant TUI";
     const titleBar = new TextRenderable(renderer, {
       id: "main-menu-title",
-      content: t`${bold(fg(theme.accent)(title))}${subtitle}`,
+      content: t`${bold(fg(theme.accent)(title))}`,
       marginBottom: 1,
     });
     this.root.add(titleBar);
@@ -75,7 +87,7 @@ export class MainMenu {
     });
     this.root.add(this.filterBar);
 
-    // Menu list — icons on the left, full-height rows
+    // Menu list
     const initialIdx = options.initialSelectedId
       ? Math.max(
           0,
@@ -92,9 +104,8 @@ export class MainMenu {
       },
       onFilterChange: (filter) => this.updateFilterBar(filter),
       onEscape: () => {
-        // Escape on main menu with empty filter — no-op (quit via Ctrl+c)
+        // No-op on main menu with empty filter — quit via Ctrl+c
       },
-      // No onBack — Backspace with empty filter is no-op on main menu
       initialSelectedIndex: initialIdx,
       wrapSelection: true,
     });
@@ -110,10 +121,15 @@ export class MainMenu {
 
     renderer.root.add(this.root);
 
-    // Re-wrap help bar on terminal resize
+    // Re-wrap bars on terminal resize
     renderer.on("resize", () => {
       this.helpBar.content = formatHelpBar(this.theme, HELP);
     });
+  }
+
+  /** Push a live connection info update to the header bar. */
+  updateConnectionInfo(info: ConnectionInfo): void {
+    this.headerBar.content = formatHeaderBar(this.theme, info);
   }
 
   /** Show or hide the main menu view */
