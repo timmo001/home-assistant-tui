@@ -23,6 +23,19 @@ import {
   type LocalizeFunc,
 } from "../data/stateTranslation.js";
 import { resolveEntityIcon } from "../data/iconResolver.js";
+import { mdiToNerdFont, DEFAULT_ICON } from "../data/iconResolver.js";
+import {
+  fetchAreaRegistry,
+  type AreaRegistryEntry,
+} from "../data/areaRegistry.js";
+import {
+  fetchEntityRegistry,
+  type EntityRegistryEntry,
+} from "../data/entityRegistry.js";
+import {
+  fetchDeviceRegistry,
+  type DeviceRegistryEntry,
+} from "../data/deviceRegistry.js";
 
 const log = (msg: string) => console.error(`[ha-tui:DashboardView] ${msg}`);
 
@@ -31,7 +44,10 @@ const DEFAULT_LIMIT = 8;
 
 // ---------------------------------------------------------------------------
 
-export type DashboardViewOptions = ConnectedViewOptions;
+export interface DashboardViewOptions extends ConnectedViewOptions {
+  /** Called when the user selects an area from the areas section */
+  readonly onAreaSelect?: (areaId: string, areaName: string) => void;
+}
 
 /**
  * Dashboard view — shows favorites + usage-predicted entities with live state updates.
@@ -58,6 +74,12 @@ export class DashboardView extends ConnectedView {
   private entityCache = new Map<string, HassEntity>();
   private isFirstEntityUpdate = true;
 
+  // Area section state
+  private areas: AreaRegistryEntry[] = [];
+  private entityRegistry: EntityRegistryEntry[] = [];
+  private deviceMap: Map<string, DeviceRegistryEntry> = new Map();
+  private onAreaSelect: ((areaId: string, areaName: string) => void) | undefined;
+
   // Relative-time refresh timer (only runs when visible)
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -72,6 +94,8 @@ export class DashboardView extends ConnectedView {
       viewTitle: strings.menu.dashboard.title,
       initialStatus: "Connecting\u2026",
     });
+
+    this.onAreaSelect = options.onAreaSelect;
   }
 
   // ── ConnectedView hooks ───────────────────────────────────────────────────
@@ -92,8 +116,12 @@ export class DashboardView extends ConnectedView {
       id: "dashboard-list",
       items: [],
       theme: this.theme,
-      onSelect: (_item) => {
-        // Intentional noop — entity actions are not yet implemented
+      onSelect: (item) => {
+        // Check if this is an area item (prefixed with "area:")
+        if (item.id.startsWith("area:") && this.onAreaSelect) {
+          const areaId = item.id.slice(5); // Remove "area:" prefix
+          this.onAreaSelect(areaId, item.title);
+        }
       },
       onFilterChange: (filter) => this.updateFilterBar(filter),
       onEscape: () => this.callbacks.onBack(),
@@ -103,16 +131,25 @@ export class DashboardView extends ConnectedView {
   }
 
   protected async doInitialize(conn: Connection): Promise<void> {
-    log("Fetching favorites and usage prediction");
+    log("Fetching favorites, usage prediction, and areas");
     this.showStatus("Loading\u2026");
 
     try {
-      const [homeResult, predictedResult, localizeResult] =
-        await Promise.allSettled([
-          fetchFrontendHomeData(conn),
-          getCommonControlsUsagePrediction(conn),
-          fetchStateTranslations(conn),
-        ]);
+      const [
+        homeResult,
+        predictedResult,
+        localizeResult,
+        areasResult,
+        entityRegistryResult,
+        deviceRegistryResult,
+      ] = await Promise.allSettled([
+        fetchFrontendHomeData(conn),
+        getCommonControlsUsagePrediction(conn),
+        fetchStateTranslations(conn),
+        fetchAreaRegistry(conn),
+        fetchEntityRegistry(conn),
+        fetchDeviceRegistry(conn),
+      ]);
 
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
@@ -126,6 +163,25 @@ export class DashboardView extends ConnectedView {
         log(
           `Failed to fetch state translations: ${String(localizeResult.reason)}`,
         );
+      }
+
+      if (areasResult.status === "fulfilled") {
+        this.areas = areasResult.value;
+        log(`Areas loaded: ${this.areas.length}`);
+      } else {
+        log(`Failed to fetch areas: ${String(areasResult.reason)}`);
+      }
+
+      if (entityRegistryResult.status === "fulfilled") {
+        this.entityRegistry = entityRegistryResult.value;
+      } else {
+        log(`Failed to fetch entity registry: ${String(entityRegistryResult.reason)}`);
+      }
+
+      if (deviceRegistryResult.status === "fulfilled") {
+        this.deviceMap = new Map(deviceRegistryResult.value.map((d) => [d.id, d]));
+      } else {
+        log(`Failed to fetch device registry: ${String(deviceRegistryResult.reason)}`);
       }
 
       const favorites =
@@ -159,7 +215,7 @@ export class DashboardView extends ConnectedView {
       log(`Entity list (${merged.length}): ${merged.join(", ")}`);
       this.entityIds = merged;
 
-      if (merged.length === 0) {
+      if (merged.length === 0 && this.areas.length === 0) {
         this.showStatus("No entities — add favorites in Home Assistant");
         return;
       }
@@ -182,6 +238,9 @@ export class DashboardView extends ConnectedView {
     this.localize = null;
     this.entityCache.clear();
     this.entityIds = [];
+    this.areas = [];
+    this.entityRegistry = [];
+    this.deviceMap = new Map();
     this.isFirstEntityUpdate = true;
     this.stopRefreshTimer();
   }
@@ -211,6 +270,7 @@ export class DashboardView extends ConnectedView {
 
   /**
    * First entities snapshot: build the full item list preserving display order.
+   * Includes entity favorites/predicted items followed by the areas section.
    */
   private populateInitialItems(allEntities: HassEntities): void {
     const items: MenuItem[] = [];
@@ -220,6 +280,11 @@ export class DashboardView extends ConnectedView {
       this.entityCache.set(entityId, entity);
       items.push(this.entityToMenuItem(entity));
     }
+
+    // Append visible areas (areas that have at least one entity)
+    const areaItems = this.buildAreaItems(allEntities);
+    items.push(...areaItems);
+
     this.hideStatus();
     this.menuList.setItems(items);
   }
@@ -287,6 +352,51 @@ export class DashboardView extends ConnectedView {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  /**
+   * Build area menu items for the "Areas" group section.
+   * Only includes areas that have at least one non-disabled, non-unavailable entity.
+   */
+  private buildAreaItems(allEntities: HassEntities): MenuItem[] {
+    if (this.areas.length === 0) return [];
+
+    // Build a set of area IDs that have visible entities
+    const visibleAreaIds = new Set<string>();
+    for (const entry of this.entityRegistry) {
+      if (entry.disabled_by != null) continue;
+      const entity = allEntities[entry.entity_id];
+      if (!entity || entity.state === "unavailable") continue;
+
+      // Determine entity's area: direct assignment or via device
+      const device = entry.device_id
+        ? this.deviceMap.get(entry.device_id)
+        : undefined;
+      const areaId = entry.area_id ?? device?.area_id ?? null;
+      if (areaId) visibleAreaIds.add(areaId);
+    }
+
+    const groupLabel = this.strings.dashboard.areasGroup;
+    const items: MenuItem[] = [];
+
+    // Sort areas alphabetically by name
+    const sortedAreas = [...this.areas]
+      .filter((a) => visibleAreaIds.has(a.area_id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const area of sortedAreas) {
+      const icon = area.icon ? (mdiToNerdFont(area.icon) ?? DEFAULT_ICON) : DEFAULT_ICON;
+      items.push({
+        id: `area:${area.area_id}`,
+        icon,
+        title: area.name,
+        description: "",
+        action: { type: "noop" },
+        group: groupLabel,
+      });
+    }
+
+    return items;
+  }
+
   private entityToMenuItem(entity: HassEntity): MenuItem {
     return {
       id: entity.entity_id,
@@ -294,6 +404,7 @@ export class DashboardView extends ConnectedView {
       title: entity.attributes.friendly_name ?? entity.entity_id,
       description: this.formatDescription(entity),
       action: { type: "noop" },
+      group: this.strings.dashboard.favoritesGroup,
     };
   }
 

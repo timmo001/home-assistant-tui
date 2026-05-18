@@ -11,6 +11,7 @@ import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
 import { DashboardView } from "./DashboardView.js";
 import { EntitiesView } from "./EntitiesView.js";
+import { AreaEntitiesView } from "./AreaEntitiesView.js";
 import { VariantPopup } from "./VariantPopup.js";
 import { ConnectionForm } from "./ConnectionForm.js";
 import type { ConnectionFormValues } from "./ConnectionForm.js";
@@ -72,6 +73,7 @@ export class App {
   private submenuView: SubmenuView;
   private dashboardView: DashboardView;
   private entitiesView: EntitiesView;
+  private areaEntitiesView: AreaEntitiesView;
   private variantPopup: VariantPopup;
   private connectionForm: ConnectionForm;
   private activeView: ViewId = "main";
@@ -79,6 +81,7 @@ export class App {
   private appTitle: string;
   private strings: Locale;
   private connectionValues: Partial<ConnectionFormValues>;
+  private currentConnection: Connection | null = null;
 
   constructor(
     deps: AppDeps,
@@ -126,7 +129,16 @@ export class App {
       deps.renderer,
       deps.theme,
       deps.strings,
-      childViewOpts,
+      {
+        ...childViewOpts,
+        onAreaSelect: (areaId, areaName) => {
+          this.areaEntitiesView.setArea(areaId, areaName);
+          if (this.currentConnection) {
+            this.areaEntitiesView.setConnection(this.currentConnection);
+          }
+          this.pushView("areaEntities");
+        },
+      },
     );
 
     this.entitiesView = new EntitiesView(
@@ -134,6 +146,16 @@ export class App {
       deps.theme,
       deps.strings,
       childViewOpts,
+    );
+
+    this.areaEntitiesView = new AreaEntitiesView(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        ...childViewOpts,
+        parentTitle: deps.strings.menu.dashboard.title,
+      },
     );
 
     this.variantPopup = new VariantPopup(
@@ -176,6 +198,7 @@ export class App {
     this.submenuView.setVisible(false);
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
+    this.areaEntitiesView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     // --- Global keyboard ---
@@ -232,12 +255,18 @@ export class App {
     this.submenuView.updateConnectionInfo(info);
     this.dashboardView.updateConnectionInfo(info);
     this.entitiesView.updateConnectionInfo(info);
+    this.areaEntitiesView.updateConnectionInfo(info);
   }
 
   /** Provide or clear the active WebSocket connection for views that need it. */
   updateConnection(conn: Connection | null): void {
+    this.currentConnection = conn;
     this.dashboardView.setConnection(conn);
     this.entitiesView.setConnection(conn);
+    // AreaEntitiesView gets connection lazily via onAreaSelect
+    if (conn) {
+      this.areaEntitiesView.setConnection(conn);
+    }
   }
 
   /**
@@ -276,6 +305,7 @@ export class App {
     this.submenuView.setVisible(false);
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
+    this.areaEntitiesView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     this.activeView = viewId;
@@ -297,6 +327,10 @@ export class App {
       case "entities":
         this.entitiesView.setVisible(true);
         this.entitiesView.resetAndFocus();
+        break;
+      case "areaEntities":
+        this.areaEntitiesView.setVisible(true);
+        this.areaEntitiesView.resetAndFocus();
         break;
       case "setup":
         setTerminalTitle(
@@ -380,6 +414,9 @@ export class App {
       case "entities":
         this.entitiesView.focus();
         break;
+      case "areaEntities":
+        this.areaEntitiesView.focus();
+        break;
       case "setup":
         this.connectionForm.focus();
         break;
@@ -399,6 +436,9 @@ export class App {
         break;
       case "entities":
         this.entitiesView.blur();
+        break;
+      case "areaEntities":
+        this.areaEntitiesView.blur();
         break;
       case "setup":
         this.connectionForm.blur();

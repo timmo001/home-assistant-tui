@@ -30,6 +30,15 @@ export interface Locale {
     readonly urlLabel: string;
   };
 
+  dashboard: {
+    /** Group header for the favorites section in the dashboard */
+    readonly favoritesGroup: string;
+    /** Group header for the areas section in the dashboard */
+    readonly areasGroup: string;
+    /** Loading message while fetching areas */
+    readonly loadingAreas: string;
+  };
+
   entities: {
     readonly empty: string;
     /** Group mode labels */
@@ -55,6 +64,13 @@ export interface Locale {
       /** Label for entities without an integration (shouldn't happen, but fallback) */
       readonly integration: string;
     };
+  };
+
+  areaEntities: {
+    readonly loading: string;
+    readonly empty: string;
+    /** Label for entities without a device in area view */
+    readonly noDevice: string;
   };
 
   errors: {

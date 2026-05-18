@@ -29,6 +29,12 @@ export const en: Locale = {
     urlLabel: "URL",
   },
 
+  dashboard: {
+    favoritesGroup: "Favorites",
+    areasGroup: "Areas",
+    loadingAreas: "Loading areas\u2026",
+  },
+
   entities: {
     empty: "No entities found",
     groupBy: {
@@ -50,6 +56,12 @@ export const en: Locale = {
       domain: "Other",
       integration: "Unknown",
     },
+  },
+
+  areaEntities: {
+    loading: "Loading entities\u2026",
+    empty: "No entities in this area",
+    noDevice: "No device",
   },
 
   errors: {
