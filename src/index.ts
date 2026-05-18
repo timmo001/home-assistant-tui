@@ -101,16 +101,13 @@ if (flags.subcommand === "test-connection") {
             initialConnectionValues: config.homeassistant,
           },
           // onConnectionSaved — called when user saves the connection form
-          (values) => {
+          async (values) => {
             log(`Saving new config: url=${values.url}`);
             const newConfig = {
               homeassistant: { url: values.url, token: values.token },
             };
-            Effect.runFork(
+            await Effect.runPromise(
               saveConfig(newConfig).pipe(
-                Effect.catch((err) =>
-                  Effect.sync(() => log(`Save config failed: ${err}`)),
-                ),
                 Effect.flatMap(() => ha.reconfigure(newConfig)),
               ),
             );
@@ -118,12 +115,10 @@ if (flags.subcommand === "test-connection") {
         );
         log("App created");
 
-        // Subscribe to HA connection state and push updates to the header bar
-        ha.subscribe((info) => {
+        // Subscribe to HA connection state and push updates to views
+        ha.subscribe((info, conn) => {
           app.updateConnectionInfo(info);
-          app.updateConnection(
-            info.status === "connected" ? ha.getConnection() : null,
-          );
+          app.updateConnection(conn);
         });
 
         // Only attempt connection if a token is configured

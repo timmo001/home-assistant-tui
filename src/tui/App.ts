@@ -57,8 +57,11 @@ export interface AppDeps {
 /**
  * Called when the user saves the connection form.
  * Allows the entry point to persist config and (re)connect.
+ * Rejects if save or reconnect fails (form stays open with error feedback).
  */
-export type OnConnectionSaved = (values: ConnectionFormValues) => void;
+export type OnConnectionSaved = (
+  values: ConnectionFormValues,
+) => Promise<void>;
 
 /** Top-level TUI application shell managing a view stack and global keyboard */
 export class App {
@@ -153,10 +156,12 @@ export class App {
       deps.theme,
       deps.strings,
       {
-        onSubmit: (values) => {
+        onSubmit: async (values) => {
           log("Connection form submitted — saving config");
           this.connectionValues = values;
-          onConnectionSaved?.(values);
+          if (onConnectionSaved) {
+            await onConnectionSaved(values);
+          }
           this.popView();
         },
         onCancel: () => {

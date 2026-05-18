@@ -14,11 +14,13 @@ export const en: Locale = {
   },
 
   connectionForm: {
+    connecting: "Connecting…",
     help: {
       cancel: "cancel",
       nextField: "next field",
       save: "save",
     },
+    saveFailed: "Connection failed — check URL and token",
     subtitle: " — enter your Home Assistant URL and access token",
     title: "Connection Setup",
     tokenLabel: "Token",

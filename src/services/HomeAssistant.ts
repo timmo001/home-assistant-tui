@@ -16,14 +16,16 @@ import type { Locale } from "../i18n/index.js";
 
 const log = (msg: string) => console.error(`[ha-tui:HomeAssistant] ${msg}`);
 
-export type ConnectionListener = (info: ConnectionInfo) => void;
+export type ConnectionListener = (
+  info: ConnectionInfo,
+  connection: Connection | null,
+) => void;
 
 export interface HomeAssistantServiceI {
   readonly connect: Effect.Effect<void>;
   readonly disconnect: Effect.Effect<void>;
   readonly subscribe: (cb: ConnectionListener) => () => void;
   readonly reconfigure: (config: HaTuiConfig) => Effect.Effect<void>;
-  readonly getConnection: () => Connection | null;
 }
 
 function makeHomeAssistantService(
@@ -32,6 +34,7 @@ function makeHomeAssistantService(
 ): HomeAssistantServiceI {
   let config = initialConfig;
   let connection: Connection | null = null;
+  let connecting = false;
   const listeners = new Set<ConnectionListener>();
   let currentInfo: ConnectionInfo = {
     status: "disconnected",
@@ -41,7 +44,7 @@ function makeHomeAssistantService(
 
   function emit(partial: Partial<ConnectionInfo>): void {
     currentInfo = { ...currentInfo, ...partial };
-    for (const cb of listeners) cb(currentInfo);
+    for (const cb of listeners) cb(currentInfo, connection);
   }
 
   function resolveErrorStatus(err: unknown): ConnectionStatus {
@@ -73,6 +76,13 @@ function makeHomeAssistantService(
       log(`Failed to fetch HA config/user: ${err}`);
     }
 
+    // Clean up any existing state_changed subscription before re-subscribing
+    // (prevents leak if onReady fires multiple times, e.g. on reconnect)
+    if (unsubStateChanges) {
+      void unsubStateChanges();
+      unsubStateChanges = null;
+    }
+
     try {
       unsubStateChanges = await connection.subscribeEvents<unknown>(() => {
         emit({ lastUpdateAt: new Date() });
@@ -83,6 +93,11 @@ function makeHomeAssistantService(
   }
 
   const connect: Effect.Effect<void> = Effect.promise(async () => {
+    if (connecting) {
+      log("Connect already in progress — skipping");
+      return;
+    }
+    connecting = true;
     emit({ status: "connecting", errorMessage: undefined });
 
     const auth = createLongLivedTokenAuth(
@@ -93,10 +108,13 @@ function makeHomeAssistantService(
     try {
       connection = await createConnection({ auth, createSocket });
     } catch (err) {
+      connecting = false;
       const status = resolveErrorStatus(err);
       emit({ status, errorMessage: String(err) });
       return;
     }
+
+    connecting = false;
 
     // createConnection resolves after auth completes — "ready" has already fired.
     // Call onReady() directly for the initial connect, then keep the listener
@@ -135,7 +153,7 @@ function makeHomeAssistantService(
     disconnect,
     subscribe: (cb) => {
       listeners.add(cb);
-      cb(currentInfo);
+      cb(currentInfo, connection);
       return () => {
         listeners.delete(cb);
       };
@@ -147,7 +165,6 @@ function makeHomeAssistantService(
         emit({ url: newConfig.homeassistant.url });
         yield* connect;
       }),
-    getConnection: () => connection,
   };
 }
 

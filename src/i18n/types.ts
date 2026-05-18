@@ -21,6 +21,8 @@ export interface Locale {
       readonly nextField: string;
       readonly save: string;
     };
+    readonly connecting: string;
+    readonly saveFailed: string;
     readonly subtitle: string;
     readonly title: string;
     readonly tokenLabel: string;

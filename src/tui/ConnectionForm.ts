@@ -26,8 +26,11 @@ export interface ConnectionFormOptions {
    * Used by Settings > Connection to show the currently saved config.
    */
   readonly initialValues?: Partial<ConnectionFormValues>;
-  /** Called with the entered values when the user submits the form. */
-  readonly onSubmit: (values: ConnectionFormValues) => void;
+  /**
+   * Called with the entered values when the user submits the form.
+   * If the returned promise rejects, the form stays open and shows an error.
+   */
+  readonly onSubmit: (values: ConnectionFormValues) => Promise<void>;
   /**
    * Called when the user presses Escape.
    * May be omitted on first-run setup where there is no previous state to cancel to.
@@ -53,8 +56,10 @@ export class ConnectionForm {
   private tokenInput: InputRenderable;
   private urlLabel: TextRenderable;
   private tokenLabel: TextRenderable;
+  private statusText: TextRenderable;
   private helpBar: TextRenderable;
   private activeField: FieldName = "url";
+  private submitting = false;
   private callbacks: ConnectionFormOptions;
   private theme: Theme;
   private strings: Locale;
@@ -131,6 +136,14 @@ export class ConnectionForm {
     });
     this.root.add(this.tokenInput);
 
+    // Status line (connecting / error feedback)
+    this.statusText = new TextRenderable(renderer, {
+      id: "conn-form-status",
+      content: t``,
+      marginBottom: 0,
+    });
+    this.root.add(this.statusText);
+
     // Help bar
     const helpEntries: HelpEntry[] = [
       { key: strings.keys.tab, action: strings.connectionForm.help.nextField },
@@ -196,6 +209,9 @@ export class ConnectionForm {
   // Keyboard handling (called by App when this view is active)
 
   handleKeyPress(key: KeyEvent): boolean {
+    // Block input while a save is in progress
+    if (this.submitting) return true;
+
     if (key.name === "escape") {
       log("Escape pressed — cancelling");
       this.callbacks.onCancel?.();
@@ -255,8 +271,22 @@ export class ConnectionForm {
       return;
     }
 
+    if (this.submitting) return;
+    this.submitting = true;
+
     log(`Submitting form: url=${url}`);
-    this.callbacks.onSubmit({ url, token });
+    this.statusText.content = t`${fg(this.theme.fgMuted)(this.strings.connectionForm.connecting)}`;
+
+    this.callbacks.onSubmit({ url, token }).then(
+      () => {
+        this.submitting = false;
+        this.statusText.content = t``;
+      },
+      () => {
+        this.submitting = false;
+        this.statusText.content = t`${fg(this.theme.red)(this.strings.connectionForm.saveFailed)}`;
+      },
+    );
   }
 
   private updateLabels(): void {
