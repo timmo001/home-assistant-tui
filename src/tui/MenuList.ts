@@ -168,27 +168,46 @@ export class MenuList extends ScrollBoxRenderable {
   /**
    * Replace displayed items without resetting filter text or page.
    * Used when filtering is managed externally (`externalFilter: true`).
-   * Resets selection to top and rebuilds rows for the new item set.
+   *
+   * If the page structure is unchanged (same item IDs, same groups, same page),
+   * rows are patched in-place to avoid flicker and scroll position loss.
+   * Otherwise, a full rebuild is performed with selection restoration.
    */
   setFilteredItems(items: readonly MenuItem[]): void {
     // Preserve selection: remember the currently selected item's ID
     const prevSelected = this.getSelectedItem();
     const prevId = prevSelected?.id;
 
-    this._clearRows();
+    const prevItems = this._items;
     this._items = items;
 
-    // Try to restore page position
-    if (prevId && items.length > 0) {
+    // Determine the target page
+    let targetPage = this._currentPage;
+    if (prevId && items.length > 0 && this._isPaginated()) {
       const globalIndex = items.findIndex((item) => item.id === prevId);
-      if (globalIndex >= 0 && this._isPaginated()) {
-        this._currentPage = Math.floor(globalIndex / this._pageSize!);
-      } else if (globalIndex < 0) {
-        this._currentPage = 0;
+      if (globalIndex >= 0) {
+        targetPage = Math.floor(globalIndex / this._pageSize!);
+      } else {
+        targetPage = 0;
       }
-    } else {
-      this._currentPage = 0;
+    } else if (items.length === 0) {
+      targetPage = 0;
     }
+
+    // Check if we can do an in-place patch (same page, same structure)
+    if (
+      targetPage === this._currentPage &&
+      this._rows.length > 0 &&
+      this._canPatchInPlace(prevItems, items, targetPage)
+    ) {
+      this._patchRowsInPlace();
+      this._emitPageChange();
+      return;
+    }
+
+    // Full rebuild required
+    this._clearRows();
+    this._currentPage = targetPage;
 
     // Start at top, _buildRows will ensure it's on a selectable row
     this._selectedIndex = 0;
@@ -205,6 +224,77 @@ export class MenuList extends ScrollBoxRenderable {
     }
 
     this._emitPageChange();
+  }
+
+  /**
+   * Check if the current page structure matches the new items so rows
+   * can be patched in-place without a full rebuild.
+   */
+  private _canPatchInPlace(
+    _prevItems: readonly MenuItem[],
+    newItems: readonly MenuItem[],
+    targetPage: number,
+  ): boolean {
+    // Get new page items
+    let newPageItems: readonly MenuItem[];
+    if (this._pageSize && newItems.length > this._pageSize) {
+      const start = targetPage * this._pageSize;
+      const end = start + this._pageSize;
+      newPageItems = newItems.slice(start, end);
+    } else {
+      newPageItems = newItems;
+    }
+
+    // Walk current rows and compare against new page items
+    let itemIdx = 0;
+    for (const row of this._rows) {
+      if (row.isSentinel) continue;
+      if (row.isGroupHeader) {
+        // Check that the next item in the new list starts a group with this name
+        const nextItem = newPageItems[itemIdx];
+        if (!nextItem || nextItem.group !== row.item.title) return false;
+        continue;
+      }
+      // Regular item row — must match by ID and group
+      const newItem = newPageItems[itemIdx];
+      if (!newItem) return false;
+      if (newItem.id !== row.item.id) return false;
+      if (newItem.group !== row.item.group) return false;
+      itemIdx++;
+    }
+
+    // All items must be accounted for
+    return itemIdx === newPageItems.length;
+  }
+
+  /**
+   * Patch row text content in-place without removing/re-adding DOM nodes.
+   * Preserves scroll position and avoids flicker.
+   */
+  private _patchRowsInPlace(): void {
+    const th = this._theme;
+    const pageItems = this._pageItems();
+    let itemIdx = 0;
+
+    for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
+      const row = this._rows[rowIdx];
+      if (row.isSentinel || row.isGroupHeader) continue;
+
+      const newItem = pageItems[itemIdx];
+      if (!newItem) break;
+
+      // Update stored item reference
+      row.item = newItem;
+
+      // Re-render text with correct selection styling
+      const isSelected = rowIdx === this._selectedIndex;
+      const textColor = isSelected ? th.accent : th.fg;
+      row.iconText.content = t`${fg(textColor)(newItem.icon)}`;
+      row.titleText.content = t`${fg(textColor)(newItem.title)}`;
+      row.descText.content = t`${fg(th.fgMuted)(newItem.description)}`;
+
+      itemIdx++;
+    }
   }
 
   /** Programmatically select an item by index */
