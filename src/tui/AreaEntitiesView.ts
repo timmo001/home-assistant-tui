@@ -1,6 +1,5 @@
 import {
   type CliRenderer,
-  TextRenderable,
   t,
   fg,
   dim,
@@ -35,7 +34,6 @@ import {
   type LocalizeFunc,
 } from "../data/stateTranslation.js";
 import { resolveEntityIcon } from "../data/iconResolver.js";
-import { formatHeaderBar } from "./headerBar.js";
 import { twoPhaseSearch } from "../search.js";
 import type { FuseOptionKey } from "fuse.js";
 
@@ -100,9 +98,8 @@ export class AreaEntitiesView extends ConnectedView {
   private filteredItems: readonly SearchableMenuItem[] = [];
   private filterText = "";
 
-  // Page indicator
-  private pageIndicator: TextRenderable;
-  private pageIndicatorVisible = false;
+  // Pagination info text (shown on the filter bar line)
+  private pageInfoText = "";
 
   constructor(
     renderer: CliRenderer,
@@ -117,13 +114,6 @@ export class AreaEntitiesView extends ConnectedView {
     });
 
     this.parentTitle = options.parentTitle;
-
-    // Page indicator — inserted above the menu list when pagination is active
-    this.pageIndicator = new TextRenderable(renderer, {
-      id: "area-entities-page-indicator",
-      content: t``,
-      marginBottom: 1,
-    });
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -145,12 +135,7 @@ export class AreaEntitiesView extends ConnectedView {
     this.callbacks.onTitleChange?.(this.titleParts);
 
     // Re-render header with updated breadcrumb
-    this.headerBar.content = formatHeaderBar(
-      this.theme,
-      this.strings,
-      this.currentInfo,
-      this.titleParts,
-    );
+    this.header.update(this.currentInfo, this.titleParts);
 
     // Re-initialize if we already have a connection
     if (this.conn) {
@@ -168,10 +153,8 @@ export class AreaEntitiesView extends ConnectedView {
 
   override showStatus(message: string): void {
     super.showStatus(message);
-    if (this.pageIndicatorVisible) {
-      this.root.remove(this.pageIndicator.id);
-      this.pageIndicatorVisible = false;
-    }
+    this.pageInfoText = "";
+    this.updateFilterBar(this.filterText);
   }
 
   // ── ConnectedView hooks ───────────────────────────────────────────────────
@@ -456,10 +439,14 @@ export class AreaEntitiesView extends ConnectedView {
 
   private updateFilterBar(filter: string): void {
     const groupLabel = this.strings.entities.groupBy.device;
+    const pageInfo = this.pageInfoText;
+    const suffix = pageInfo
+      ? `${groupLabel}  ${pageInfo}`
+      : groupLabel;
     if (filter.length === 0) {
-      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(groupLabel))}`;
+      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {
-      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(groupLabel))}`;
+      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     }
   }
 
@@ -468,21 +455,15 @@ export class AreaEntitiesView extends ConnectedView {
     const totalPages = this.menuList.totalPages;
 
     if (totalPages <= 1) {
-      if (this.pageIndicatorVisible) {
-        this.root.remove(this.pageIndicator.id);
-        this.pageIndicatorVisible = false;
-      }
+      this.pageInfoText = "";
+      this.updateFilterBar(this.filterText);
       return;
     }
 
     const page = this.menuList.currentPage + 1;
     const pageText = this.strings.entities.pageOf(page, totalPages);
     const countText = this.strings.entities.totalCount(total);
-    this.pageIndicator.content = t`${dim(fg(this.theme.fgMuted)(`${pageText} · ${countText}`))}`;
-
-    if (!this.pageIndicatorVisible) {
-      this.root.insertBefore(this.pageIndicator, this.menuList);
-      this.pageIndicatorVisible = true;
-    }
+    this.pageInfoText = `${pageText} · ${countText}`;
+    this.updateFilterBar(this.filterText);
   }
 }

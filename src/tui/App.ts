@@ -99,7 +99,7 @@ export class App {
 
     const childViewOpts: ChildViewOptions = {
       onBack: () => this.popView(),
-      rootTitle: this.appTitle,
+      rootTitle: "⌂",
       onTitleChange: (parts) => {
         const suffix = parts.slice(1).join(" \u203A ");
         setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);

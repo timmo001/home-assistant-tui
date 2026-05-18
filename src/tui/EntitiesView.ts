@@ -1,6 +1,5 @@
 import {
   type CliRenderer,
-  TextRenderable,
   type KeyEvent,
   t,
   fg,
@@ -114,9 +113,8 @@ export class EntitiesView extends ConnectedView {
   private filteredItems: readonly SearchableMenuItem[] = [];
   private filterText = "";
 
-  // Page indicator (unique to this view)
-  private pageIndicator: TextRenderable;
-  private pageIndicatorVisible = false;
+  // Pagination info text (shown on the filter bar line)
+  private pageInfoText = "";
 
   constructor(
     renderer: CliRenderer,
@@ -128,13 +126,6 @@ export class EntitiesView extends ConnectedView {
       idPrefix: "entities",
       viewTitle: strings.menu.entities.title,
       initialStatus: strings.entities.loading,
-    });
-
-    // Page indicator — inserted above the menu list when pagination is active
-    this.pageIndicator = new TextRenderable(renderer, {
-      id: "entities-page-indicator",
-      content: t``,
-      marginBottom: 1,
     });
   }
 
@@ -271,10 +262,8 @@ export class EntitiesView extends ConnectedView {
 
   override showStatus(message: string): void {
     super.showStatus(message);
-    if (this.pageIndicatorVisible) {
-      this.root.remove(this.pageIndicator.id);
-      this.pageIndicatorVisible = false;
-    }
+    this.pageInfoText = "";
+    this.updateFilterBar(this.filterText);
   }
 
   // ── Initialization helpers ────────────────────────────────────────────────
@@ -496,10 +485,14 @@ export class EntitiesView extends ConnectedView {
 
   private updateFilterBar(filter: string): void {
     const modeLabel = this.groupModeLabel();
+    const pageInfo = this.pageInfoText;
+    const suffix = pageInfo
+      ? `${modeLabel}  ${pageInfo}`
+      : modeLabel;
     if (filter.length === 0) {
-      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(modeLabel))}`;
+      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {
-      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(modeLabel))}`;
+      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     }
   }
 
@@ -522,22 +515,16 @@ export class EntitiesView extends ConnectedView {
     const totalPages = this.menuList.totalPages;
 
     if (totalPages <= 1) {
-      if (this.pageIndicatorVisible) {
-        this.root.remove(this.pageIndicator.id);
-        this.pageIndicatorVisible = false;
-      }
+      this.pageInfoText = "";
+      this.updateFilterBar(this.filterText);
       return;
     }
 
     const page = this.menuList.currentPage + 1;
     const pageText = this.strings.entities.pageOf(page, totalPages);
     const countText = this.strings.entities.totalCount(total);
-    this.pageIndicator.content = t`${dim(fg(this.theme.fgMuted)(`${pageText} · ${countText}`))}`;
-
-    if (!this.pageIndicatorVisible) {
-      this.root.insertBefore(this.pageIndicator, this.menuList);
-      this.pageIndicatorVisible = true;
-    }
+    this.pageInfoText = `${pageText} · ${countText}`;
+    this.updateFilterBar(this.filterText);
   }
 
   /** Handle extra key bindings not consumed by MenuList */

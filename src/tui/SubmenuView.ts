@@ -8,9 +8,9 @@ import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
-import { formatHeaderBar } from "./headerBar.js";
 import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
+import { HeaderBlock } from "./HeaderBlock.js";
 
 /** Configuration callbacks for the submenu view */
 export interface SubmenuViewOptions {
@@ -42,7 +42,7 @@ export class SubmenuView {
   private callbacks: SubmenuViewOptions;
 
   private root: BoxRenderable;
-  private headerBar: TextRenderable;
+  private header: HeaderBlock;
   private filterBar: TextRenderable;
   private menuList: MenuList;
   private helpBar: TextRenderable;
@@ -84,23 +84,18 @@ export class SubmenuView {
       padding: 1,
     });
 
-    // Header bar — connection state + breadcrumb (kept in sync by App)
-    this.headerBar = new TextRenderable(renderer, {
-      id: "submenu-header",
-      content: formatHeaderBar(
-        theme,
-        strings,
-        this.currentInfo,
-        this.getTitleParts(),
-      ),
-      marginBottom: 1,
+    // Header block — ASCII art + connection state breadcrumb
+    this.header = new HeaderBlock(renderer, theme, strings, this.root, {
+      id: "submenu",
+      titleParts: this.getTitleParts(),
+      info: this.currentInfo,
     });
-    this.root.add(this.headerBar);
 
     // Filter bar — always visible to avoid layout shifts
     this.filterBar = new TextRenderable(renderer, {
       id: "submenu-filter",
       content: formatFilterBar(theme, ""),
+      marginTop: 1,
       marginBottom: 1,
     });
     this.root.add(this.filterBar);
@@ -225,12 +220,7 @@ export class SubmenuView {
   }
 
   private rebuildHeader(): void {
-    this.headerBar.content = formatHeaderBar(
-      this.theme,
-      this.strings,
-      this.currentInfo,
-      this.getTitleParts(),
-    );
+    this.header.update(this.currentInfo, this.getTitleParts());
   }
 
   /** Build the plain-text breadcrumb segments for the current submenu depth */

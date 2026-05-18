@@ -10,9 +10,9 @@ import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { formatHelpBar, type HelpEntry } from "./helpBar.js";
-import { formatHeaderBar } from "./headerBar.js";
 import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
+import { HeaderBlock } from "./HeaderBlock.js";
 
 // ---------------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ export abstract class ConnectedView {
   protected titleParts: readonly string[];
 
   protected root: BoxRenderable;
-  protected headerBar: TextRenderable;
+  protected header: HeaderBlock;
   protected filterBar: TextRenderable;
   protected statusText: TextRenderable;
   protected menuList: MenuList;
@@ -100,16 +100,16 @@ export abstract class ConnectedView {
     });
 
     this.currentInfo = { status: "disconnected", url: "" };
-    this.headerBar = new TextRenderable(renderer, {
-      id: `${config.idPrefix}-header`,
-      content: formatHeaderBar(theme, strings, this.currentInfo, this.titleParts),
-      marginBottom: 1,
+    this.header = new HeaderBlock(renderer, theme, strings, this.root, {
+      id: config.idPrefix,
+      titleParts: this.titleParts,
+      info: this.currentInfo,
     });
-    this.root.add(this.headerBar);
 
     this.filterBar = new TextRenderable(renderer, {
       id: `${config.idPrefix}-filter`,
       content: formatFilterBar(theme, ""),
+      marginTop: 1,
       marginBottom: 1,
     });
     this.root.add(this.filterBar);
@@ -137,12 +137,6 @@ export abstract class ConnectedView {
 
     renderer.on("resize", () => {
       this.helpBar.content = formatHelpBar(this.theme, this.help);
-      this.headerBar.content = formatHeaderBar(
-        this.theme,
-        this.strings,
-        this.currentInfo,
-        this.titleParts,
-      );
     });
 
     options.onTitleChange?.(this.titleParts);
@@ -171,12 +165,7 @@ export abstract class ConnectedView {
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
     this.currentInfo = info;
-    this.headerBar.content = formatHeaderBar(
-      this.theme,
-      this.strings,
-      info,
-      this.titleParts,
-    );
+    this.header.update(info, this.titleParts);
   }
 
   /**

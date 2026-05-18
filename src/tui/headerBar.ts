@@ -3,6 +3,7 @@ import type { TextChunk } from "@opentui/core";
 import type { Theme } from "../theme.js";
 import type { ConnectionInfo, ConnectionStatus } from "../types.js";
 import type { Locale } from "../i18n/index.js";
+import { mdiToNerdFont } from "../data/iconResolver.js";
 
 /** Status indicator characters and their associated colours */
 const STATUS_DOT: Record<ConnectionStatus, string> = {
@@ -68,25 +69,10 @@ export function formatHeaderBar(
   // Build the right-side metadata string progressively
   const rightParts: TextChunk[] = [];
 
-  if (info.url) {
-    rightParts.push(fg(theme.fgSubtle)("   "));
-    rightParts.push(fg(theme.fgMuted)(info.url));
-  }
-
-  if (info.haVersion) {
-    rightParts.push(fg(theme.fgSubtle)("   "));
-    rightParts.push(fg(theme.fgMuted)(info.haVersion));
-  }
-
   if (info.userName) {
+    const accountIcon = mdiToNerdFont("account") ?? "󰀄";
     rightParts.push(fg(theme.fgSubtle)("   "));
-    rightParts.push(fg(theme.fgMuted)(info.userName));
-  }
-
-  if (info.lastUpdateAt) {
-    const ago = formatAgo(strings, info.lastUpdateAt);
-    rightParts.push(fg(theme.fgSubtle)("   "));
-    rightParts.push(fg(theme.fgMuted)(strings.status.updatedAgo(ago)));
+    rightParts.push(fg(theme.fgMuted)(`${accountIcon} ${info.userName}`));
   }
 
   if (info.errorMessage && info.status === "error") {
