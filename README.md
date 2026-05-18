@@ -59,55 +59,6 @@ homeassistant:
 
 Use **Settings > Connection** to change these values from within the TUI.
 
-## Structure
-
-```
-src/
-├── index.ts                   Entry point — config, HA service, app bootstrap
-├── config.ts                  YAML config load/save, isConfigured()
-├── flags.ts                   CLI flag parsing and subcommand resolution
-├── menu.ts                    Menu item definitions and MenuRegistry builder
-├── search.ts                  Two-phase search (exact substring + Fuse.js fuzzy)
-├── theme.ts                   Theme interface and default (Catppuccin Mocha)
-├── types.ts                   Shared types: MenuItem, ConnectionInfo, ViewId, etc.
-├── cmd/
-│   └── testConnection.ts      test-connection diagnostic subcommand
-├── data/
-│   ├── areaRegistry.ts        AreaRegistryEntry + fetchAreaRegistry
-│   ├── deviceRegistry.ts      DeviceRegistryEntry + fetchDeviceRegistry
-│   ├── entityRegistry.ts      EntityRegistryEntry + subscribe/fetch
-│   ├── floorRegistry.ts       FloorRegistryEntry + fetchFloorRegistry
-│   ├── frontend.ts            Fetch HA frontend config (favorites)
-│   ├── iconResolver.ts        MDI→Nerd Font icon resolution + domain fallbacks
-│   ├── mdiCodepoints.ts       Generated MDI name→codepoint map
-│   ├── stateTranslation.ts    fetchStateTranslations + translateEntityState
-│   └── usagePrediction.ts     Common-controls usage prediction
-├── i18n/
-│   ├── index.ts               Strings context (defaults to English)
-│   ├── en.ts                  English locale strings
-│   └── types.ts               Locale interface definition
-├── services/
-│   ├── HomeAssistant.ts       HA WebSocket lifecycle + connection state
-│   └── CommandRunner.ts       Shell command execution (suspend/silent/notify)
-└── tui/
-    ├── App.ts                 View stack, action dispatch, global keyboard
-    ├── MainMenu.ts            Main menu view — header + filter + list + help
-    ├── SubmenuView.ts         Nested submenu — header + breadcrumb + list + help
-    ├── DashboardView.ts       Dashboard — favorites + areas overview
-    ├── EntitiesView.ts        Entity browser with grouping and paging
-    ├── AreaEntitiesView.ts    Entities filtered to a single area
-    ├── ConnectionForm.ts      Shared URL + token form (setup + settings)
-    ├── ConnectedView.ts       Connection-aware view base
-    ├── HeaderBlock.ts         Header block component
-    ├── MenuList.ts            Reusable fuzzy-filterable scroll list
-    ├── VariantPopup.ts        Centred popup for variant selection
-    ├── Toast.ts               Single-slot toast notification overlay
-    ├── breadcrumb.ts          Breadcrumb trail formatter
-    ├── filterBar.ts           Filter bar component
-    ├── headerBar.ts           Connection state header formatter
-    └── helpBar.ts             Auto-wrapping keybind help bar
-```
-
 ## Views
 
 | ViewId | Description |
