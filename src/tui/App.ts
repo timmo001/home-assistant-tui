@@ -1,4 +1,5 @@
 import type { CliRenderer } from "@opentui/core";
+import { Effect } from "effect";
 import type { ViewId, MenuItem, MenuAction } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
@@ -144,13 +145,11 @@ export class App {
           action.type === "notify"
         ) {
           setTimeout(() => {
-            this.commandRunner
-              .runSuspended(action.cmd, true)
-              .then(() => deps.renderer.destroy())
-              .catch((err) => {
-                log(`Execute error: ${err}`);
-                deps.renderer.destroy();
-              });
+            Effect.runFork(
+              this.commandRunner.runSuspended(action.cmd, true).pipe(
+                Effect.ensuring(Effect.sync(() => deps.renderer.destroy())),
+              ),
+            );
           }, 50);
         } else {
           setTimeout(() => this.handleMenuAction(item), 50);
@@ -251,23 +250,15 @@ export class App {
         break;
 
       case "command":
-        this.commandRunner
-          .runSuspended(action.cmd, action.wait)
-          .catch((err) => {
-            log(`Command error: ${err}`);
-          });
+        Effect.runFork(this.commandRunner.runSuspended(action.cmd, action.wait));
         break;
 
       case "silent":
-        this.commandRunner.runSilent(action.cmd).catch((err) => {
-          log(`Silent command error: ${err}`);
-        });
+        Effect.runFork(this.commandRunner.runSilent(action.cmd));
         break;
 
       case "notify":
-        this.commandRunner.runNotify(action.cmd, action.notify).catch((err) => {
-          log(`Notify command error: ${err}`);
-        });
+        Effect.runFork(this.commandRunner.runNotify(action.cmd, action.notify));
         break;
 
       case "view":

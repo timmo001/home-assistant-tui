@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { createCliRenderer } from "@opentui/core";
-import { createCommandRunner } from "./services/CommandRunner.js";
+import { CommandRunner } from "./services/CommandRunner.js";
 import { HomeAssistantService } from "./services/HomeAssistant.js";
 import { loadTheme } from "./theme.js";
 import { Toast } from "./tui/Toast.js";
@@ -43,82 +43,89 @@ if (flags.subcommand) {
   }
 }
 
-const program = Effect.gen(function* () {
-  const theme = yield* loadTheme;
-  log("Starting...");
+const program = Effect.scoped(
+  Effect.gen(function* () {
+    const theme = yield* loadTheme;
+    log("Starting...");
 
-  const renderer = yield* Effect.promise(() =>
-    createCliRenderer({
-      exitOnCtrlC: true,
-      screenMode: "alternate-screen",
-      useMouse: false,
-      backgroundColor: theme.bg,
-      onDestroy: () => process.exit(0),
-    }),
-  );
-  log("Renderer created");
+    const renderer = yield* Effect.promise(() =>
+      createCliRenderer({
+        exitOnCtrlC: true,
+        screenMode: "alternate-screen",
+        useMouse: false,
+        backgroundColor: theme.bg,
+        onDestroy: () => process.exit(0),
+      }),
+    );
+    log("Renderer created");
 
-  const toast = new Toast(renderer, theme);
-  const commandRunner = createCommandRunner(renderer, toast);
+    const toast = new Toast(renderer, theme);
+    const config = yield* loadConfig;
+    const configured = yield* isConfigured;
+    const initialView = configured ? "main" : "setup";
+    log(
+      `Config ${configured ? "found" : "not found"} — starting on ${initialView}`,
+    );
 
-  // Determine whether the first-run setup view should be shown
-  const configured = isConfigured();
-  const initialView = configured ? "main" : "setup";
-  log(`Config ${configured ? "found" : "not found"} — starting on ${initialView}`);
+    // Run the app with services provided via layers
+    yield* Effect.gen(function* () {
+      const ha = yield* HomeAssistantService;
+      const cr = yield* CommandRunner;
 
-  // Load whatever config exists (may be empty defaults)
-  let config = loadConfig();
+      const app = new App(
+        { renderer, theme, commandRunner: cr },
+        {
+          title: "Home Assistant TUI",
+          executeItemId,
+          initialView,
+          initialConnectionValues: config.homeassistant,
+        },
+        // onConnectionSaved — called when user saves the connection form
+        (values) => {
+          log(`Saving new config: url=${values.url}`);
+          const newConfig = {
+            homeassistant: { url: values.url, token: values.token },
+          };
+          Effect.runFork(
+            saveConfig(newConfig).pipe(
+              Effect.catch((err) =>
+                Effect.sync(() => log(`Save config failed: ${err}`)),
+              ),
+              Effect.flatMap(() => ha.reconfigure(newConfig)),
+            ),
+          );
+        },
+      );
+      log("App created");
 
-  // Build HA service from current config
-  let haService = new HomeAssistantService(config);
+      // Subscribe to HA connection state and push updates to the header bar
+      ha.subscribe((info) => app.updateConnectionInfo(info));
 
-  const app = new App(
-    { renderer, theme, commandRunner },
-    {
-      title: "Home Assistant TUI",
-      executeItemId,
-      initialView,
-      initialConnectionValues: config.homeassistant,
-    },
-    // onConnectionSaved — called when user saves the connection form
-    (values) => {
-      log(`Saving new config: url=${values.url}`);
-      const newConfig = {
-        homeassistant: { url: values.url, token: values.token },
-      };
-      saveConfig(newConfig);
-      config = newConfig;
+      // Only attempt connection if a token is configured
+      if (configured) {
+        log("Connecting to Home Assistant...");
+        yield* Effect.forkScoped(ha.connect);
+      }
 
-      // Reconnect with the new config
-      haService.disconnect();
-      haService = new HomeAssistantService(newConfig);
-      haService.subscribe((info) => app.updateConnectionInfo(info));
-      void haService.connect();
-    },
-  );
-  log("App created");
+      log("Starting renderer...");
+      renderer.start();
+      log("Renderer started — TUI is live");
 
-  // Subscribe to HA connection state and push updates to the header bar
-  haService.subscribe((info) => app.updateConnectionInfo(info));
-
-  // Only attempt connection if a token is configured
-  if (configured) {
-    log("Connecting to Home Assistant...");
-    void haService.connect();
-  }
-
-  log("Starting renderer...");
-  renderer.start();
-  log("Renderer started — TUI is live");
-
-  yield* Effect.never;
-});
-
-const runnable = program.pipe(Effect.scoped);
+      yield* Effect.never;
+    }).pipe(
+      Effect.provide(
+        Layer.merge(
+          HomeAssistantService.layer(config),
+          CommandRunner.layer(renderer, toast),
+        ),
+      ),
+    );
+  }),
+);
 
 log("Launching...");
 
-Effect.runPromise(runnable).catch((err) => {
+Effect.runPromise(program).catch((err) => {
   log(`Fatal error: ${err}`);
   console.error(err);
   process.exit(1);
