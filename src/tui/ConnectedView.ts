@@ -214,6 +214,7 @@ export abstract class ConnectedView {
 
   resetAndFocus(): void {
     this.menuList.resetFilter();
+    this.menuList.resetSelection();
     this.menuList.focus();
   }
 

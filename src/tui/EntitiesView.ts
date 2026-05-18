@@ -264,7 +264,7 @@ export class EntitiesView extends ConnectedView {
 
   override resetAndFocus(): void {
     this.filterText = "";
-    this.rebuildAndDisplay();
+    this.rebuildAndDisplay({ resetSelection: true });
     this.updateFilterBar("");
     this.menuList.focus();
   }

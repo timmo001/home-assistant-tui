@@ -156,6 +156,7 @@ export class SubmenuView {
   /** Reset filter state and give keyboard focus to the menu list */
   resetAndFocus(): void {
     this.menuList.resetFilter();
+    this.menuList.resetSelection();
     this.menuList.focus();
   }
 

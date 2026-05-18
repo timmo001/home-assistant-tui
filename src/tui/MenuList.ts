@@ -326,6 +326,17 @@ export class MenuList extends ScrollBoxRenderable {
     this._applyFilter();
   }
 
+  /** Move selection to the first selectable row */
+  resetSelection(): void {
+    if (this._rows.length === 0) return;
+    const firstSelectable = this._rows.findIndex(
+      (r) => !r.isGroupHeader && !r.isSentinel,
+    );
+    if (firstSelectable >= 0 && firstSelectable !== this._selectedIndex) {
+      this._applySelection(firstSelectable);
+    }
+  }
+
   /** Current page index (0-based) */
   get currentPage(): number {
     return this._currentPage;
