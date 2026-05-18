@@ -395,8 +395,16 @@ export class EntitiesView extends ConnectedView {
 
   // ── Grouping & sorting ────────────────────────────────────────────────────
 
-  /** Apply current group mode to items, set group labels, and sort */
-  private applyGrouping(items: readonly SearchableMenuItem[]): SearchableMenuItem[] {
+  /**
+   * Apply current group mode to items, set group labels, and sort.
+   * When `preserveOrder` is true (i.e. search results), items within
+   * each group keep their incoming relevance order instead of being
+   * re-sorted alphabetically.
+   */
+  private applyGrouping(
+    items: readonly SearchableMenuItem[],
+    options?: { preserveOrder?: boolean },
+  ): SearchableMenuItem[] {
     const s = this.strings.entities;
     const ungroupedLabels = new Set([
       s.ungrouped.device,
@@ -405,7 +413,7 @@ export class EntitiesView extends ConnectedView {
       s.ungrouped.integration,
     ]);
 
-    const grouped = items.map((item): SearchableMenuItem => {
+    const grouped = items.map((item, index): SearchableMenuItem & { _rank: number } => {
       let group: string;
       switch (this.groupMode) {
         case "area":
@@ -425,10 +433,10 @@ export class EntitiesView extends ConnectedView {
             : s.ungrouped.domain;
           break;
       }
-      return { ...item, group };
+      return { ...item, group, _rank: index };
     });
 
-    // Sort: groups alphabetically, ungrouped to bottom, items alphabetical within group
+    // Sort: groups alphabetically, ungrouped to bottom
     grouped.sort((a, b) => {
       const aUngrouped = ungroupedLabels.has(a.group!) ? 1 : 0;
       const bUngrouped = ungroupedLabels.has(b.group!) ? 1 : 0;
@@ -438,7 +446,8 @@ export class EntitiesView extends ConnectedView {
       const groupCmp = (a.group ?? "").localeCompare(b.group ?? "");
       if (groupCmp !== 0) return groupCmp;
 
-      // Alphabetical item order within group
+      // Within group: preserve search relevance order, or sort alphabetically
+      if (options?.preserveOrder) return a._rank - b._rank;
       return a.title.localeCompare(b.title);
     });
 
@@ -458,7 +467,7 @@ export class EntitiesView extends ConnectedView {
         (item) => item.searchFields,
         FUSE_KEYS,
       );
-      this.filteredItems = this.applyGrouping(searchResults);
+      this.filteredItems = this.applyGrouping(searchResults, { preserveOrder: true });
     }
 
     this.hideStatus();
