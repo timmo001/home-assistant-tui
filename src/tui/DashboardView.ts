@@ -9,7 +9,11 @@ import {
   subscribeEntities,
   type UnsubscribeFunc,
 } from "home-assistant-js-websocket";
-import type { Connection, HassEntity, HassEntities } from "home-assistant-js-websocket";
+import type {
+  Connection,
+  HassEntity,
+  HassEntities,
+} from "home-assistant-js-websocket";
 import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
@@ -128,7 +132,12 @@ export class DashboardView {
     this.currentInfo = { status: "disconnected", url: "" };
     this.headerBar = new TextRenderable(renderer, {
       id: "dashboard-header",
-      content: formatHeaderBar(theme, strings, this.currentInfo, this.titleParts),
+      content: formatHeaderBar(
+        theme,
+        strings,
+        this.currentInfo,
+        this.titleParts,
+      ),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
@@ -165,7 +174,12 @@ export class DashboardView {
 
     renderer.on("resize", () => {
       this.helpBar.content = formatHelpBar(this.theme, this.help);
-      this.headerBar.content = formatHeaderBar(this.theme, this.strings, this.currentInfo, this.titleParts);
+      this.headerBar.content = formatHeaderBar(
+        this.theme,
+        this.strings,
+        this.currentInfo,
+        this.titleParts,
+      );
     });
 
     options.onTitleChange?.(this.titleParts);
@@ -176,7 +190,12 @@ export class DashboardView {
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
     this.currentInfo = info;
-    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info, this.titleParts);
+    this.headerBar.content = formatHeaderBar(
+      this.theme,
+      this.strings,
+      info,
+      this.titleParts,
+    );
   }
 
   /**
@@ -240,11 +259,12 @@ export class DashboardView {
     this.showStatus("Loading\u2026");
 
     try {
-      const [homeResult, predictedResult, localizeResult] = await Promise.allSettled([
-        fetchFrontendHomeData(conn),
-        getCommonControlsUsagePrediction(conn),
-        fetchStateTranslations(conn),
-      ]);
+      const [homeResult, predictedResult, localizeResult] =
+        await Promise.allSettled([
+          fetchFrontendHomeData(conn),
+          getCommonControlsUsagePrediction(conn),
+          fetchStateTranslations(conn),
+        ]);
 
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
@@ -255,7 +275,9 @@ export class DashboardView {
       if (localizeResult.status === "fulfilled") {
         this.localize = localizeResult.value;
       } else {
-        log(`Failed to fetch state translations: ${String(localizeResult.reason)}`);
+        log(
+          `Failed to fetch state translations: ${String(localizeResult.reason)}`,
+        );
       }
 
       const favorites =

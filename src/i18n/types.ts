@@ -10,10 +10,17 @@ export interface Locale {
   };
 
   menu: {
-    readonly dashboard: { readonly title: string; readonly description: string };
+    readonly dashboard: {
+      readonly title: string;
+      readonly description: string;
+    };
+    readonly entities: { readonly title: string; readonly description: string };
     readonly settings: { readonly title: string; readonly description: string };
     readonly quit: { readonly title: string; readonly description: string };
-    readonly connection: { readonly title: string; readonly description: string };
+    readonly connection: {
+      readonly title: string;
+      readonly description: string;
+    };
     /** Display title for the settings submenu breadcrumb */
     readonly settingsTitle: string;
   };
@@ -48,6 +55,8 @@ export interface Locale {
     readonly back: string;
     readonly quit: string;
     readonly cancel: string;
+    readonly nextPage: string;
+    readonly prevPage: string;
   };
 
   /** Key names as displayed in help bars */
@@ -60,12 +69,23 @@ export interface Locale {
     readonly backspace: string;
     /** Label for "type characters to filter" */
     readonly typeInput: string;
+    readonly pgUpDn: string;
   };
 
   commands: {
     readonly pressAnyKey: string;
     readonly commandFailed: string;
     readonly reconnectionFailed: string;
+  };
+
+  entities: {
+    readonly pageOf: (page: number, total: number) => string;
+    readonly totalCount: (n: number) => string;
+    readonly nextPage: string;
+    readonly prevPage: string;
+    readonly loading: string;
+    readonly empty: string;
+    readonly searchPrompt: (count: number) => string;
   };
 
   errors: {

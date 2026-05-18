@@ -10,6 +10,7 @@ import type { CommandRunnerService } from "../services/CommandRunner.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
 import { DashboardView } from "./DashboardView.js";
+import { EntitiesView } from "./EntitiesView.js";
 import { VariantPopup } from "./VariantPopup.js";
 import { ConnectionForm } from "./ConnectionForm.js";
 import type { ConnectionFormValues } from "./ConnectionForm.js";
@@ -57,6 +58,7 @@ export class App {
   private mainMenu: MainMenu;
   private submenuView: SubmenuView;
   private dashboardView: DashboardView;
+  private entitiesView: EntitiesView;
   private variantPopup: VariantPopup;
   private connectionForm: ConnectionForm;
   private activeView: ViewId = "main";
@@ -84,52 +86,87 @@ export class App {
       title: options.title,
     });
 
-    this.submenuView = new SubmenuView(deps.renderer, deps.theme, deps.strings, {
-      onAction: (item) => this.handleMenuAction(item),
-      onBack: () => this.popView(),
-      rootTitle: options.title ?? deps.strings.app.name,
-      onTitleChange: (parts) => {
-        const suffix = parts.slice(1).join(" \u203A ");
-        setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+    this.submenuView = new SubmenuView(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        onAction: (item) => this.handleMenuAction(item),
+        onBack: () => this.popView(),
+        rootTitle: options.title ?? deps.strings.app.name,
+        onTitleChange: (parts) => {
+          const suffix = parts.slice(1).join(" \u203A ");
+          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+        },
       },
-    });
+    );
 
-    this.dashboardView = new DashboardView(deps.renderer, deps.theme, deps.strings, {
-      onBack: () => this.popView(),
-      rootTitle: options.title ?? deps.strings.app.name,
-      onTitleChange: (parts) => {
-        const suffix = parts.slice(1).join(" \u203A ");
-        setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+    this.dashboardView = new DashboardView(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        onBack: () => this.popView(),
+        rootTitle: options.title ?? deps.strings.app.name,
+        onTitleChange: (parts) => {
+          const suffix = parts.slice(1).join(" \u203A ");
+          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+        },
       },
-    });
+    );
 
-    this.variantPopup = new VariantPopup(deps.renderer, deps.theme, deps.strings, {
-      onSelect: (action) => {
-        queueMicrotask(() => this.focusActiveView());
-        this.dispatchAction(action);
+    this.entitiesView = new EntitiesView(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        onBack: () => this.popView(),
+        rootTitle: options.title ?? deps.strings.app.name,
+        onTitleChange: (parts) => {
+          const suffix = parts.slice(1).join(" \u203A ");
+          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+        },
       },
-      onDismiss: () => {
-        queueMicrotask(() => this.focusActiveView());
-      },
-    });
+    );
 
-    this.connectionForm = new ConnectionForm(deps.renderer, deps.theme, deps.strings, {
-      onSubmit: (values) => {
-        log("Connection form submitted — saving config");
-        this.connectionValues = values;
-        onConnectionSaved?.(values);
-        this.popView();
+    this.variantPopup = new VariantPopup(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        onSelect: (action) => {
+          queueMicrotask(() => this.focusActiveView());
+          this.dispatchAction(action);
+        },
+        onDismiss: () => {
+          queueMicrotask(() => this.focusActiveView());
+        },
       },
-      onCancel: () => {
-        log("Connection form cancelled");
-        this.popView();
+    );
+
+    this.connectionForm = new ConnectionForm(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      {
+        onSubmit: (values) => {
+          log("Connection form submitted — saving config");
+          this.connectionValues = values;
+          onConnectionSaved?.(values);
+          this.popView();
+        },
+        onCancel: () => {
+          log("Connection form cancelled");
+          this.popView();
+        },
       },
-    });
+    );
 
     // --- Hide all views initially ---
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
     this.dashboardView.setVisible(false);
+    this.entitiesView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     // --- Global keyboard ---
@@ -163,9 +200,7 @@ export class App {
           action.type === "notify"
         ) {
           setTimeout(() => {
-            Effect.runPromise(
-              this.commandRunner.runSuspended(action.cmd, true),
-            )
+            Effect.runPromise(this.commandRunner.runSuspended(action.cmd, true))
               .then(() => deps.renderer.destroy())
               .catch((err: unknown) => {
                 log(`Execute error: ${err}`);
@@ -187,11 +222,13 @@ export class App {
     this.mainMenu.updateConnectionInfo(info);
     this.submenuView.updateConnectionInfo(info);
     this.dashboardView.updateConnectionInfo(info);
+    this.entitiesView.updateConnectionInfo(info);
   }
 
   /** Provide or clear the active WebSocket connection for views that need it. */
   updateConnection(conn: Connection | null): void {
     this.dashboardView.setConnection(conn);
+    this.entitiesView.setConnection(conn);
   }
 
   /**
@@ -229,6 +266,7 @@ export class App {
     this.mainMenu.setVisible(false);
     this.submenuView.setVisible(false);
     this.dashboardView.setVisible(false);
+    this.entitiesView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     this.activeView = viewId;
@@ -246,6 +284,10 @@ export class App {
       case "dashboard":
         this.dashboardView.setVisible(true);
         this.dashboardView.resetAndFocus();
+        break;
+      case "entities":
+        this.entitiesView.setVisible(true);
+        this.entitiesView.resetAndFocus();
         break;
       case "setup":
         setTerminalTitle(
@@ -326,6 +368,9 @@ export class App {
       case "dashboard":
         this.dashboardView.focus();
         break;
+      case "entities":
+        this.entitiesView.focus();
+        break;
       case "setup":
         this.connectionForm.focus();
         break;
@@ -342,6 +387,9 @@ export class App {
         break;
       case "dashboard":
         this.dashboardView.blur();
+        break;
+      case "entities":
+        this.entitiesView.blur();
         break;
       case "setup":
         this.connectionForm.blur();

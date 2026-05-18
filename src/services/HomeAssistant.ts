@@ -113,7 +113,10 @@ function makeHomeAssistantService(
 
     connection.addEventListener("reconnect-error", (_, err) => {
       log(`Reconnect error: ${err}`);
-      emit({ status: "error", errorMessage: strings.commands.reconnectionFailed });
+      emit({
+        status: "error",
+        errorMessage: strings.commands.reconnectionFailed,
+      });
     });
   });
 

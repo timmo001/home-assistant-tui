@@ -39,9 +39,11 @@ function maskToken(token: string): string {
 }
 
 function describeError(err: unknown): string {
-  if (err === ERR_CANNOT_CONNECT) return `ERR_CANNOT_CONNECT — could not reach the server`;
+  if (err === ERR_CANNOT_CONNECT)
+    return `ERR_CANNOT_CONNECT — could not reach the server`;
   if (err === ERR_INVALID_AUTH) return `ERR_INVALID_AUTH — token rejected`;
-  if (err === ERR_CONNECTION_LOST) return `ERR_CONNECTION_LOST — connection dropped`;
+  if (err === ERR_CONNECTION_LOST)
+    return `ERR_CONNECTION_LOST — connection dropped`;
   return String(err);
 }
 
@@ -77,15 +79,18 @@ export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
     catch: (err) => err,
   }).pipe(
     Effect.matchEffect({
-      onFailure: (err) => Effect.sync(() => {
-        fail(`Connection failed: ${describeError(err)}`);
-        process.exit(1);
-      }),
+      onFailure: (err) =>
+        Effect.sync(() => {
+          fail(`Connection failed: ${describeError(err)}`);
+          process.exit(1);
+        }),
       onSuccess: (c) => Effect.succeed(c),
     }),
   );
 
-  ok(`Connected in ${Date.now() - t0} ms   (HA version on socket: ${conn.haVersion ?? "unknown"})`);
+  ok(
+    `Connected in ${Date.now() - t0} ms   (HA version on socket: ${conn.haVersion ?? "unknown"})`,
+  );
 
   // ── HA config + user ──────────────────────────────────────────────────────
   header("3. HA config and user");

@@ -12,6 +12,10 @@ export const en: Locale = {
       title: "Dashboard",
       description: "Overview of your Home Assistant instance",
     },
+    entities: {
+      title: "Entities",
+      description: "Browse and search all entities",
+    },
     settings: {
       title: "Settings",
       description: "Configure connection and preferences",
@@ -44,7 +48,8 @@ export const en: Locale = {
     subtitle: " — enter your Home Assistant URL and access token",
     urlLabel: "URL",
     tokenLabel: "Token",
-    tokenPlaceholder: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    tokenPlaceholder:
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     helpNextField: "next field",
     helpSave: "save",
     helpCancel: "cancel",
@@ -57,6 +62,8 @@ export const en: Locale = {
     back: "back",
     quit: "quit",
     cancel: "cancel",
+    nextPage: "next page",
+    prevPage: "prev page",
   },
 
   keys: {
@@ -67,12 +74,24 @@ export const en: Locale = {
     tab: "Tab",
     backspace: "Backspace",
     typeInput: "type",
+    pgUpDn: "PgUp/PgDn",
   },
 
   commands: {
     pressAnyKey: "Press any key to continue...",
     commandFailed: "Command failed",
     reconnectionFailed: "Reconnection failed",
+  },
+
+  entities: {
+    pageOf: (page, total) => `Page ${page} of ${total}`,
+    totalCount: (n) => `${n.toLocaleString()} entities`,
+    nextPage: "Next page →",
+    prevPage: "← Previous page",
+    loading: "Loading entities\u2026",
+    empty: "No entities found",
+    searchPrompt: (count) =>
+      `Type to search ${count.toLocaleString()} entities`,
   },
 
   errors: {

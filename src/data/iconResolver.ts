@@ -72,12 +72,13 @@ const DOMAIN_MDI: Record<string, string> = {
 };
 
 /** Pre-resolved domain → Nerd Font glyph map. */
-export const DOMAIN_ICONS: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(DOMAIN_MDI).flatMap(([domain, mdi]) => {
-    const glyph = MDI_CODEPOINTS[mdi];
-    return glyph !== undefined ? [[domain, glyph]] : [];
-  }),
-);
+export const DOMAIN_ICONS: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    Object.entries(DOMAIN_MDI).flatMap(([domain, mdi]) => {
+      const glyph = MDI_CODEPOINTS[mdi];
+      return glyph !== undefined ? [[domain, glyph]] : [];
+    }),
+  );
 
 /**
  * Resolve the best available Nerd Font icon glyph for a HassEntity.

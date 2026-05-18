@@ -13,8 +13,7 @@ import type { Locale } from "../i18n/index.js";
 import { DEFAULT_HA_URL } from "../config.js";
 import { formatHelpBar, type HelpEntry } from "./helpBar.js";
 
-const log = (msg: string) =>
-  console.error(`[ha-tui:ConnectionForm] ${msg}`);
+const log = (msg: string) => console.error(`[ha-tui:ConnectionForm] ${msg}`);
 
 export interface ConnectionFormValues {
   readonly url: string;
@@ -70,8 +69,7 @@ export class ConnectionForm {
     this.strings = strings;
     this.callbacks = options;
 
-    const initialUrl =
-      options.initialValues?.url?.trim() || DEFAULT_HA_URL;
+    const initialUrl = options.initialValues?.url?.trim() || DEFAULT_HA_URL;
     const initialToken = options.initialValues?.token ?? "";
 
     // Root container
@@ -138,7 +136,12 @@ export class ConnectionForm {
       { key: strings.keys.tab, action: strings.connectionForm.helpNextField },
       { key: strings.keys.enter, action: strings.connectionForm.helpSave },
       ...(options.onCancel
-        ? [{ key: strings.keys.esc, action: strings.connectionForm.helpCancel } as HelpEntry]
+        ? [
+            {
+              key: strings.keys.esc,
+              action: strings.connectionForm.helpCancel,
+            } as HelpEntry,
+          ]
         : []),
     ];
     this.helpBar = new TextRenderable(renderer, {

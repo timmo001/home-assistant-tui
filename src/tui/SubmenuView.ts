@@ -85,7 +85,12 @@ export class SubmenuView {
     // Header bar — connection state + breadcrumb (kept in sync by App)
     this.headerBar = new TextRenderable(renderer, {
       id: "submenu-header",
-      content: formatHeaderBar(theme, strings, this.currentInfo, this.getTitleParts()),
+      content: formatHeaderBar(
+        theme,
+        strings,
+        this.currentInfo,
+        this.getTitleParts(),
+      ),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
@@ -240,8 +245,7 @@ export class SubmenuView {
     }
 
     if (this.currentMenuId) {
-      const title =
-        submenuTitles.get(this.currentMenuId) ?? this.currentMenuId;
+      const title = submenuTitles.get(this.currentMenuId) ?? this.currentMenuId;
       if (parts[parts.length - 1] !== title) {
         parts.push(title);
       }

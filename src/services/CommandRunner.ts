@@ -17,7 +17,10 @@ export interface CommandRunnerI {
   readonly runSilent: (cmd: string) => Effect.Effect<void>;
 
   /** Run a command silently with toast notifications for progress and result. */
-  readonly runNotify: (cmd: string, notify: NotifyConfig) => Effect.Effect<void>;
+  readonly runNotify: (
+    cmd: string,
+    notify: NotifyConfig,
+  ) => Effect.Effect<void>;
 }
 
 /** Backward-compat alias so App.ts import does not change */

@@ -41,6 +41,16 @@ const mainItems: readonly MenuItem[] = [
   ),
 
   item(
+    "entities",
+    "󰋙",
+    en.menu.entities.title,
+    en.menu.entities.description,
+    { type: "view", viewId: "entities" },
+    undefined,
+    ["entity", "devices", "config", "registry", "browse", "search", ":ent"],
+  ),
+
+  item(
     "settings",
     "󰒓",
     en.menu.settings.title,
@@ -50,15 +60,15 @@ const mainItems: readonly MenuItem[] = [
     ["config", "preferences", "options", ":set", "prefs", "cfg", "connection"],
   ),
 
-  item("quit", "󰩈", en.menu.quit.title, en.menu.quit.description, { type: "quit" }, undefined, [
-    ":q",
-    ":wq",
-    ":qa",
-    "exit",
+  item(
     "quit",
-    "close",
-    "bye",
-  ]),
+    "󰩈",
+    en.menu.quit.title,
+    en.menu.quit.description,
+    { type: "quit" },
+    undefined,
+    [":q", ":wq", ":qa", "exit", "quit", "close", "bye"],
+  ),
 ];
 
 // --- Settings submenu ---
