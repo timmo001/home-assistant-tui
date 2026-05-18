@@ -7,6 +7,7 @@ import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import type { MenuRegistry } from "../menu.js";
 import type { CommandRunnerService } from "../services/CommandRunner.js";
+import type { Toast } from "./Toast.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
 import { DashboardView } from "./DashboardView.js";
@@ -28,6 +29,8 @@ interface ChildViewOptions {
   readonly onBack: () => void;
   readonly rootTitle: string;
   readonly onTitleChange: (titleParts: readonly string[]) => void;
+  readonly baseUrl: string;
+  readonly toast: Toast;
 }
 
 export interface AppOptions {
@@ -53,6 +56,10 @@ export interface AppDeps {
   readonly menu: MenuRegistry;
   /** Service for running shell commands with suspend/resume */
   readonly commandRunner: CommandRunnerService;
+  /** Toast instance for showing notifications */
+  readonly toast: Toast;
+  /** Base URL for the Home Assistant instance */
+  readonly baseUrl: string;
 }
 
 /**
@@ -102,6 +109,8 @@ export class App {
         const suffix = parts.slice(1).join(" \u203A ");
         setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
       },
+      baseUrl: deps.baseUrl,
+      toast: deps.toast,
     };
 
     this.mainMenu = new MainMenu(deps.renderer, deps.theme, deps.strings, {

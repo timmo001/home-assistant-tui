@@ -1,4 +1,4 @@
-import { type CliRenderer, t, fg, dim } from "@opentui/core";
+import { type CliRenderer, type KeyEvent, t, fg, dim } from "@opentui/core";
 import {
   subscribeEntities,
   type UnsubscribeFunc,
@@ -14,6 +14,7 @@ import type { Locale } from "../i18n/index.js";
 import { globalHelp, type HelpEntry } from "./helpBar.js";
 import { MenuList } from "./MenuList.js";
 import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
+import { EntityActionHandler } from "./entityActions.js";
 import {
   fetchEntityRegistry,
   type EntityRegistryEntry,
@@ -96,6 +97,9 @@ export class AreaEntitiesView extends ConnectedView {
   // Pagination info text (shown on the filter bar line)
   private pageInfoText = "";
 
+  // Entity action handler (shared keybinds for services/clipboard/browser)
+  private entityActions: EntityActionHandler;
+
   constructor(
     renderer: CliRenderer,
     theme: Theme,
@@ -109,6 +113,17 @@ export class AreaEntitiesView extends ConnectedView {
     });
 
     this.parentTitle = options.parentTitle;
+
+    this.entityActions = new EntityActionHandler({
+      getConn: () => this.conn,
+      getEntityState: (entityId) => this.entityStates[entityId],
+      baseUrl: this.baseUrl,
+      renderer: this.renderer,
+      theme: this.theme,
+      strings: this.strings,
+      toast: this.toast,
+      menuList: this.menuList,
+    });
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -157,7 +172,13 @@ export class AreaEntitiesView extends ConnectedView {
   protected buildHelp(): readonly HelpEntry[] {
     return [
       { key: this.strings.keys.arrowsUD, action: this.strings.help.navigate },
-      { key: this.strings.keys.enter, action: this.strings.help.select },
+      { key: this.strings.keys.enter, action: this.strings.help.toggle },
+      { key: this.strings.keys.ctrlY, action: this.strings.help.copyId },
+      { key: this.strings.keys.ctrlW, action: this.strings.help.openInfo },
+      { key: this.strings.keys.ctrlS, action: this.strings.help.openSettings },
+      { key: this.strings.keys.ctrlD, action: this.strings.help.openDetails },
+      { key: this.strings.keys.ctrlH, action: this.strings.help.openHistory },
+      { key: this.strings.keys.ctrlR, action: this.strings.help.openRelated },
       { key: this.strings.keys.typeInput, action: this.strings.help.filter },
       { key: this.strings.keys.pgUpDn, action: this.strings.help.nextPage },
       { key: this.strings.keys.esc, action: this.strings.help.back },
@@ -173,7 +194,7 @@ export class AreaEntitiesView extends ConnectedView {
       pageSize: PAGE_SIZE,
       externalFilter: true,
       onSelect: (_item) => {
-        // Entity actions not yet implemented
+        // Selection handled by onKeyPress via entityActions
       },
       onFilterChange: (filter) => this.handleFilterChange(filter),
       onPageChange: () => this.updatePageIndicator(),
@@ -187,6 +208,12 @@ export class AreaEntitiesView extends ConnectedView {
         this.callbacks.onBack();
       },
       onBack: () => this.callbacks.onBack(),
+      onKeyPress: (key) => {
+        if (this.entityActions.hasPopup) {
+          return this.entityActions.handleKeyPress(key);
+        }
+        return this.entityActions.handleKeyPress(key);
+      },
       wrapSelection: false,
     });
   }

@@ -31,6 +31,7 @@ const ICON: Record<ToastVariant, string> = {
  * replaces the current toast in-place instead of stacking.
  */
 export class Toast {
+  private renderer: CliRenderer;
   private root: BoxRenderable;
   private text: TextRenderable;
   private theme: Theme;
@@ -38,6 +39,7 @@ export class Toast {
   private timeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(renderer: CliRenderer, theme: Theme) {
+    this.renderer = renderer;
     this.theme = theme;
 
     this.root = new BoxRenderable(renderer, {
@@ -97,6 +99,10 @@ export class Toast {
 
     const color = this.borderColor(variant);
     this.currentId = id;
+    this.root.width = Math.min(
+      Math.max(message.length + 8, 28),
+      Math.max(this.renderer.width - 4, 28),
+    );
     this.root.borderColor = color;
     this.text.content = t`${fg(color)(ICON[variant])}  ${bold(fg(this.theme.fg)(message))}`;
     this.root.visible = true;

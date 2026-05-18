@@ -15,6 +15,7 @@ import { globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
 import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
+import { EntityActionHandler } from "./entityActions.js";
 import { fetchFrontendHomeData } from "../data/frontend.js";
 import { getCommonControlsUsagePrediction } from "../data/usagePrediction.js";
 import {
@@ -85,6 +86,9 @@ export class DashboardView extends ConnectedView {
   // Relative-time refresh timer (only runs when visible)
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
+  // Entity action handler (shared keybinds for services/clipboard/browser)
+  private entityActions: EntityActionHandler;
+
   constructor(
     renderer: CliRenderer,
     theme: Theme,
@@ -98,6 +102,17 @@ export class DashboardView extends ConnectedView {
     });
 
     this.onAreaSelect = options.onAreaSelect;
+
+    this.entityActions = new EntityActionHandler({
+      getConn: () => this.conn,
+      getEntityState: (entityId) => this.entityCache.get(entityId),
+      baseUrl: this.baseUrl,
+      renderer: this.renderer,
+      theme: this.theme,
+      strings: this.strings,
+      toast: this.toast,
+      menuList: this.menuList,
+    });
   }
 
   // ── ConnectedView hooks ───────────────────────────────────────────────────
@@ -105,10 +120,15 @@ export class DashboardView extends ConnectedView {
   protected buildHelp(): readonly HelpEntry[] {
     return [
       { key: this.strings.keys.arrowsUD, action: this.strings.help.navigate },
-      { key: this.strings.keys.enter, action: this.strings.help.select },
+      { key: this.strings.keys.enter, action: this.strings.help.toggle },
+      { key: this.strings.keys.ctrlY, action: this.strings.help.copyId },
+      { key: this.strings.keys.ctrlW, action: this.strings.help.openInfo },
+      { key: this.strings.keys.ctrlS, action: this.strings.help.openSettings },
+      { key: this.strings.keys.ctrlD, action: this.strings.help.openDetails },
+      { key: this.strings.keys.ctrlH, action: this.strings.help.openHistory },
+      { key: this.strings.keys.ctrlR, action: this.strings.help.openRelated },
       { key: this.strings.keys.typeInput, action: this.strings.help.filter },
       { key: this.strings.keys.esc, action: this.strings.help.back },
-      { key: this.strings.keys.backspace, action: this.strings.help.back },
       ...globalHelp(this.strings),
     ];
   }
@@ -128,6 +148,17 @@ export class DashboardView extends ConnectedView {
       onFilterChange: (filter) => this.updateFilterBar(filter),
       onEscape: () => this.callbacks.onBack(),
       onBack: () => this.callbacks.onBack(),
+      onKeyPress: (key) => {
+        // If a popup is open, route there
+        if (this.entityActions.hasPopup) {
+          return this.entityActions.handleKeyPress(key);
+        }
+        // Entity actions — skip area items
+        return this.entityActions.handleKeyPress(
+          key,
+          (item) => !item.id.startsWith("area:"),
+        );
+      },
       wrapSelection: true,
     });
   }

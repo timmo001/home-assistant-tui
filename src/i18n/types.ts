@@ -73,20 +73,53 @@ export interface Locale {
     readonly noDevice: string;
   };
 
+  entityActions: {
+    /** Toast shown when entity ID is copied to clipboard */
+    readonly copied: (entityId: string) => string;
+    /** Toast shown when browser is opened */
+    readonly openedWeb: string;
+    /** Toast shown after a service is successfully called */
+    readonly serviceCalled: (service: string) => string;
+    /** Toast shown when a service call fails */
+    readonly serviceError: (error: string) => string;
+    /** Toast shown when no services are available */
+    readonly noActions: string;
+    /** Toast shown when clipboard command is unavailable */
+    readonly clipboardUnavailable: string;
+    /** Title shown on the services popup */
+    readonly menuTitle: string;
+    /** Label for the toggle action in the services menu */
+    readonly toggle: string;
+    /** Label for unsupported selectors in service forms */
+    readonly unsupportedSelector: string;
+    /** Submit button label in service forms */
+    readonly submit: string;
+    /** Cancel label for service form */
+    readonly cancel: string;
+  };
+
   errors: {
     readonly unknownSubcommand: (cmd: string) => string;
   };
 
   help: {
+    readonly actions: string;
     readonly back: string;
     readonly cancel: string;
+    readonly copyId: string;
     readonly filter: string;
     readonly groupBy: string;
     readonly navigate: string;
     readonly nextPage: string;
+    readonly openDetails: string;
+    readonly openHistory: string;
+    readonly openInfo: string;
+    readonly openRelated: string;
+    readonly openSettings: string;
     readonly prevPage: string;
     readonly quit: string;
     readonly select: string;
+    readonly toggle: string;
   };
 
   /** Key names as displayed in help bars */
@@ -94,7 +127,13 @@ export interface Locale {
     readonly arrowsUD: string;
     readonly backspace: string;
     readonly ctrlC: string;
+    readonly ctrlD: string;
     readonly ctrlG: string;
+    readonly ctrlH: string;
+    readonly ctrlR: string;
+    readonly ctrlS: string;
+    readonly ctrlW: string;
+    readonly ctrlY: string;
     readonly enter: string;
     readonly esc: string;
     readonly pgUpDn: string;

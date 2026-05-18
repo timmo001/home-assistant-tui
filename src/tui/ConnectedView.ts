@@ -9,6 +9,7 @@ import type { Connection } from "home-assistant-js-websocket";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
+import type { Toast } from "./Toast.js";
 import { formatHelpBar, type HelpEntry } from "./helpBar.js";
 import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
@@ -23,6 +24,10 @@ export interface ConnectedViewOptions {
   readonly rootTitle?: string;
   /** Called when the title changes so the terminal tab can be updated */
   readonly onTitleChange?: (titleParts: readonly string[]) => void;
+  /** Base URL for the Home Assistant instance (for opening in browser) */
+  readonly baseUrl?: string;
+  /** Toast instance for showing notifications */
+  readonly toast?: Toast;
 }
 
 /**
@@ -44,6 +49,8 @@ export abstract class ConnectedView {
   protected strings: Locale;
   protected callbacks: ConnectedViewOptions;
   protected titleParts: readonly string[];
+  protected baseUrl: string;
+  protected toast: Toast | null;
 
   protected root: BoxRenderable;
   protected header: HeaderBlock;
@@ -84,6 +91,8 @@ export abstract class ConnectedView {
     this.theme = theme;
     this.strings = strings;
     this.callbacks = options;
+    this.baseUrl = options.baseUrl ?? "";
+    this.toast = options.toast ?? null;
     this.titleParts = [options.rootTitle ?? strings.app.name, config.viewTitle];
 
     this.help = this.buildHelp();

@@ -94,7 +94,15 @@ if (flags.subcommand === "test-connection") {
         const cr = yield* CommandRunner;
 
         const app = new App(
-          { renderer, theme, strings, menu, commandRunner: cr },
+          {
+            renderer,
+            theme,
+            strings,
+            menu,
+            commandRunner: cr,
+            toast,
+            baseUrl: config.homeassistant.url,
+          },
           {
             executeItemId,
             initialView,
