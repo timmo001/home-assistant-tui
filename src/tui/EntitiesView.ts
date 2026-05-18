@@ -1,6 +1,5 @@
 import {
   type CliRenderer,
-  BoxRenderable,
   TextRenderable,
   type KeyEvent,
   t,
@@ -17,12 +16,11 @@ import type {
   HassEntities,
 } from "home-assistant-js-websocket";
 import type { MenuItem } from "../types.js";
-import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
-import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
-import { formatHeaderBar } from "./headerBar.js";
+import { globalHelp, type HelpEntry } from "./helpBar.js";
 import { MenuList } from "./MenuList.js";
+import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
 import {
   fetchEntityRegistry,
   subscribeEntityRegistryUpdates,
@@ -59,14 +57,7 @@ const GROUP_MODES: readonly GroupMode[] = ["area", "device", "integration", "dom
 
 // ---------------------------------------------------------------------------
 
-export interface EntitiesViewOptions {
-  /** Called when the user navigates back */
-  readonly onBack: () => void;
-  /** Root title for the breadcrumb */
-  readonly rootTitle?: string;
-  /** Called when the title changes so the terminal tab can be updated */
-  readonly onTitleChange?: (titleParts: readonly string[]) => void;
-}
+export type EntitiesViewOptions = ConnectedViewOptions;
 
 /** MenuItem augmented with searchable fields and grouping metadata */
 interface SearchableMenuItem extends MenuItem {
@@ -95,32 +86,16 @@ const FUSE_KEYS: ReadonlyArray<FuseOptionKey<SearchableMenuItem>> = [
  *   - Entity registry (`config/entity_registry/list`) for metadata
  *   - Device registry (`config/device_registry/list`) for device names
  *   - Area registry (`config/area_registry/list`) for area names
- *   - Floor registry (`config/floor_registry/list`) for floor ordering
  *   - `subscribeEntities` for live state values
  *
  * Grouping modes (Ctrl+G to cycle):
- *   - Device (default): group by device name, sort floor→area→device→entity
+ *   - Area (default): group by area name, sort area→entity
+ *   - Device: group by device name, sort device→entity
  *   - Domain: group by entity domain, sort domain→entity
- *   - Area: group by area name, sort floor→area→entity
+ *   - Integration: group by platform name
  */
-export class EntitiesView {
-  private renderer: CliRenderer;
-  private theme: Theme;
-  private strings: Locale;
-  private callbacks: EntitiesViewOptions;
-  private titleParts: readonly string[];
-
-  private root: BoxRenderable;
-  private headerBar: TextRenderable;
-  private filterBar: TextRenderable;
-  private pageIndicator: TextRenderable;
-  private statusText: TextRenderable;
-  private menuList: MenuList;
-  private helpBar: TextRenderable;
-  private help: readonly HelpEntry[];
-
-  // Connection / subscription state
-  private conn: Connection | null = null;
+export class EntitiesView extends ConnectedView {
+  // Domain-specific state
   private localize: LocalizeFunc | null = null;
   private unsubEntities: UnsubscribeFunc | null = null;
   private unsubRegistry: (() => void) | null = null;
@@ -129,7 +104,6 @@ export class EntitiesView {
   private areaMap: Map<string, AreaRegistryEntry> = new Map();
   private entityStates: HassEntities = {};
   private isFirstEntityUpdate = true;
-  private initializationInProgress = false;
 
   // Grouping mode
   private groupMode: GroupMode = "area";
@@ -140,13 +114,9 @@ export class EntitiesView {
   private filteredItems: readonly SearchableMenuItem[] = [];
   private filterText = "";
 
-  // Whether the status text line is currently in the flex tree
-  private statusVisible = true;
+  // Page indicator (unique to this view)
+  private pageIndicator: TextRenderable;
   private pageIndicatorVisible = false;
-
-  // Current connection info for header rebuilds
-  private currentInfo: ConnectionInfo;
-  private isVisible = false;
 
   constructor(
     renderer: CliRenderer,
@@ -154,163 +124,62 @@ export class EntitiesView {
     strings: Locale,
     options: EntitiesViewOptions,
   ) {
-    this.renderer = renderer;
-    this.theme = theme;
-    this.strings = strings;
-    this.callbacks = options;
-    this.titleParts = [
-      options.rootTitle ?? strings.app.name,
-      strings.menu.entities.title,
-    ];
-
-    this.help = [
-      { key: strings.keys.arrowsUD, action: strings.help.navigate },
-      { key: strings.keys.enter, action: strings.help.select },
-      { key: strings.keys.typeInput, action: strings.help.filter },
-      { key: strings.keys.ctrlG, action: strings.help.groupBy },
-      { key: strings.keys.pgUpDn, action: strings.help.nextPage },
-      { key: strings.keys.esc, action: strings.help.back },
-      ...globalHelp(strings),
-    ];
-
-    this.root = new BoxRenderable(renderer, {
-      id: "entities-root",
-      flexDirection: "column",
-      width: "100%",
-      height: "100%",
-      padding: 1,
+    super(renderer, theme, strings, options, {
+      idPrefix: "entities",
+      viewTitle: strings.menu.entities.title,
+      initialStatus: strings.entities.loading,
     });
 
-    this.currentInfo = { status: "disconnected", url: "" };
-    this.headerBar = new TextRenderable(renderer, {
-      id: "entities-header",
-      content: formatHeaderBar(
-        theme,
-        strings,
-        this.currentInfo,
-        this.titleParts,
-      ),
-      marginBottom: 1,
-    });
-    this.root.add(this.headerBar);
-
-    this.filterBar = new TextRenderable(renderer, {
-      id: "entities-filter",
-      content: t`${fg(theme.fgSubtle)("/")}`,
-      marginBottom: 1,
-    });
-    this.root.add(this.filterBar);
-
-    // Page indicator — shown when paginated
+    // Page indicator — inserted above the menu list when pagination is active
     this.pageIndicator = new TextRenderable(renderer, {
       id: "entities-page-indicator",
       content: t``,
       marginBottom: 1,
     });
-    // Not added initially — inserted when pagination is active
+  }
 
-    // Status text — shown while loading/disconnected/empty
-    this.statusText = new TextRenderable(renderer, {
-      id: "entities-status",
-      content: t`${fg(theme.fgMuted)(strings.entities.loading)}`,
-      marginBottom: 1,
+  // ── ConnectedView hooks ───────────────────────────────────────────────────
+
+  protected buildHelp(): readonly HelpEntry[] {
+    return [
+      { key: this.strings.keys.arrowsUD, action: this.strings.help.navigate },
+      { key: this.strings.keys.enter, action: this.strings.help.select },
+      { key: this.strings.keys.typeInput, action: this.strings.help.filter },
+      { key: this.strings.keys.ctrlG, action: this.strings.help.groupBy },
+      { key: this.strings.keys.pgUpDn, action: this.strings.help.nextPage },
+      { key: this.strings.keys.esc, action: this.strings.help.back },
+      ...globalHelp(this.strings),
+    ];
+  }
+
+  protected createMenuList(): MenuList {
+    return new MenuList(this.renderer, {
+      id: "entities-list",
+      items: [],
+      theme: this.theme,
+      pageSize: PAGE_SIZE,
+      externalFilter: true,
+      onSelect: (_item) => {
+        // Entity actions not yet implemented
+      },
+      onFilterChange: (filter) => this.handleFilterChange(filter),
+      onPageChange: () => this.updatePageIndicator(),
+      onEscape: () => {
+        if (this.filterText.length > 0) {
+          this.filterText = "";
+          this.updateFilterBar("");
+          this.rebuildAndDisplay();
+          return;
+        }
+        this.callbacks.onBack();
+      },
+      onBack: () => this.callbacks.onBack(),
+      onKeyPress: (key) => this.handleKeyPress(key),
+      wrapSelection: false,
     });
-    this.root.add(this.statusText);
-
-    // Menu list with pagination
-    this.menuList = this.createMenuList([]);
-    this.root.add(this.menuList);
-
-    this.helpBar = new TextRenderable(renderer, {
-      id: "entities-help",
-      content: formatHelpBar(theme, this.help),
-      marginTop: 1,
-    });
-    this.root.add(this.helpBar);
-
-    renderer.root.add(this.root);
-
-    renderer.on("resize", () => {
-      this.helpBar.content = formatHelpBar(this.theme, this.help);
-      this.headerBar.content = formatHeaderBar(
-        this.theme,
-        this.strings,
-        this.currentInfo,
-        this.titleParts,
-      );
-    });
-
-    options.onTitleChange?.(this.titleParts);
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  /** Push a live connection info update to the header bar. */
-  updateConnectionInfo(info: ConnectionInfo): void {
-    this.currentInfo = info;
-    this.headerBar.content = formatHeaderBar(
-      this.theme,
-      this.strings,
-      info,
-      this.titleParts,
-    );
-  }
-
-  /**
-   * Provide the active WebSocket connection.
-   * Pass `null` to clean up subscriptions on disconnect.
-   */
-  setConnection(conn: Connection | null): void {
-    if (conn === this.conn) return;
-
-    if (!conn) {
-      this.cleanup();
-      this.conn = null;
-      this.showStatus("Disconnected");
-      return;
-    }
-
-    this.conn = conn;
-    void this.initialize(conn);
-  }
-
-  setVisible(visible: boolean): void {
-    this.root.visible = visible;
-    this.isVisible = visible;
-    if (visible) {
-      this.callbacks.onTitleChange?.(this.titleParts);
-    }
-  }
-
-  focus(): void {
-    this.menuList.focus();
-  }
-
-  resetAndFocus(): void {
-    this.filterText = "";
-    this.rebuildAndDisplay();
-    this.updateFilterBar("");
-    this.menuList.focus();
-  }
-
-  blur(): void {
-    this.menuList.blur();
-  }
-
-  destroy(): void {
-    this.cleanup();
-    this.renderer.root.remove(this.root.id);
-  }
-
-  // ── Initialization ────────────────────────────────────────────────────────
-
-  private async initialize(conn: Connection): Promise<void> {
-    if (this.initializationInProgress) return;
-    this.initializationInProgress = true;
-
-    this.cleanup();
-    this.conn = conn;
-
+  protected async doInitialize(conn: Connection): Promise<void> {
     log("Fetching registries and translations");
     this.showStatus(this.strings.entities.loading);
 
@@ -374,6 +243,41 @@ export class EntitiesView {
       this.initializationInProgress = false;
     }
   }
+
+  protected doCleanup(): void {
+    this.unsubEntities?.();
+    this.unsubEntities = null;
+    this.unsubRegistry?.();
+    this.unsubRegistry = null;
+    this.localize = null;
+    this.registryEntries = [];
+    this.deviceMap = new Map();
+    this.areaMap = new Map();
+    this.entityStates = {};
+    this.allMenuItems = [];
+    this.filteredItems = [];
+    this.filterText = "";
+    this.isFirstEntityUpdate = true;
+  }
+
+  // ── Public API overrides ──────────────────────────────────────────────────
+
+  override resetAndFocus(): void {
+    this.filterText = "";
+    this.rebuildAndDisplay();
+    this.updateFilterBar("");
+    this.menuList.focus();
+  }
+
+  override showStatus(message: string): void {
+    super.showStatus(message);
+    if (this.pageIndicatorVisible) {
+      this.root.remove(this.pageIndicator.id);
+      this.pageIndicatorVisible = false;
+    }
+  }
+
+  // ── Initialization helpers ────────────────────────────────────────────────
 
   private async refetchRegistry(conn: Connection): Promise<void> {
     try {
@@ -557,10 +461,7 @@ export class EntitiesView {
       this.filteredItems = this.applyGrouping(searchResults);
     }
 
-    if (this.statusVisible) {
-      this.root.remove(this.statusText.id);
-      this.statusVisible = false;
-    }
+    this.hideStatus();
     this.menuList.setFilteredItems(this.filteredItems);
     this.updatePageIndicator();
   }
@@ -580,24 +481,6 @@ export class EntitiesView {
     this.filterText = filter;
     this.updateFilterBar(filter);
     this.rebuildAndDisplay();
-  }
-
-  // ── Cleanup ───────────────────────────────────────────────────────────────
-
-  private cleanup(): void {
-    this.unsubEntities?.();
-    this.unsubEntities = null;
-    this.unsubRegistry?.();
-    this.unsubRegistry = null;
-    this.localize = null;
-    this.registryEntries = [];
-    this.deviceMap = new Map();
-    this.areaMap = new Map();
-    this.entityStates = {};
-    this.allMenuItems = [];
-    this.filteredItems = [];
-    this.filterText = "";
-    this.isFirstEntityUpdate = true;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -646,47 +529,6 @@ export class EntitiesView {
       this.root.insertBefore(this.pageIndicator, this.menuList);
       this.pageIndicatorVisible = true;
     }
-  }
-
-  /** Show a status message above the empty menu list. */
-  private showStatus(message: string): void {
-    if (!this.statusVisible) {
-      this.root.insertBefore(this.statusText, this.menuList);
-      this.statusVisible = true;
-    }
-    this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
-    this.menuList.setItems([]);
-    if (this.pageIndicatorVisible) {
-      this.root.remove(this.pageIndicator.id);
-      this.pageIndicatorVisible = false;
-    }
-  }
-
-  private createMenuList(items: readonly MenuItem[]): MenuList {
-    return new MenuList(this.renderer, {
-      id: "entities-list",
-      items,
-      theme: this.theme,
-      pageSize: PAGE_SIZE,
-      externalFilter: true,
-      onSelect: (_item) => {
-        // Entity actions not yet implemented
-      },
-      onFilterChange: (filter) => this.handleFilterChange(filter),
-      onPageChange: () => this.updatePageIndicator(),
-      onEscape: () => {
-        if (this.filterText.length > 0) {
-          this.filterText = "";
-          this.updateFilterBar("");
-          this.rebuildAndDisplay();
-          return;
-        }
-        this.callbacks.onBack();
-      },
-      onBack: () => this.callbacks.onBack(),
-      onKeyPress: (key) => this.handleKeyPress(key),
-      wrapSelection: false,
-    });
   }
 
   /** Handle extra key bindings not consumed by MenuList */

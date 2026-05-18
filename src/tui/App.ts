@@ -22,6 +22,13 @@ const setTerminalTitle = (title: string): void => {
   process.stdout.write(`\x1b]0;${title}\x07`);
 };
 
+/** Shared view options for child views (submenu, dashboard, entities) */
+interface ChildViewOptions {
+  readonly onBack: () => void;
+  readonly rootTitle: string;
+  readonly onTitleChange: (titleParts: readonly string[]) => void;
+}
+
 export interface AppOptions {
   /** Which view to start on (default: "main") */
   readonly initialView?: ViewId;
@@ -84,6 +91,15 @@ export class App {
 
     // --- Create views ---
 
+    const childViewOpts: ChildViewOptions = {
+      onBack: () => this.popView(),
+      rootTitle: this.appTitle,
+      onTitleChange: (parts) => {
+        const suffix = parts.slice(1).join(" \u203A ");
+        setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+      },
+    };
+
     this.mainMenu = new MainMenu(deps.renderer, deps.theme, deps.strings, {
       items: deps.menu.mainMenuItems,
       onSelect: (item) => this.handleMenuAction(item),
@@ -99,12 +115,7 @@ export class App {
         submenus: deps.menu.submenus,
         submenuTitles: deps.menu.submenuTitles,
         onAction: (item) => this.handleMenuAction(item),
-        onBack: () => this.popView(),
-        rootTitle: options.title ?? deps.strings.app.name,
-        onTitleChange: (parts) => {
-          const suffix = parts.slice(1).join(" \u203A ");
-          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
-        },
+        ...childViewOpts,
       },
     );
 
@@ -112,28 +123,14 @@ export class App {
       deps.renderer,
       deps.theme,
       deps.strings,
-      {
-        onBack: () => this.popView(),
-        rootTitle: options.title ?? deps.strings.app.name,
-        onTitleChange: (parts) => {
-          const suffix = parts.slice(1).join(" \u203A ");
-          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
-        },
-      },
+      childViewOpts,
     );
 
     this.entitiesView = new EntitiesView(
       deps.renderer,
       deps.theme,
       deps.strings,
-      {
-        onBack: () => this.popView(),
-        rootTitle: options.title ?? deps.strings.app.name,
-        onTitleChange: (parts) => {
-          const suffix = parts.slice(1).join(" \u203A ");
-          setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
-        },
-      },
+      childViewOpts,
     );
 
     this.variantPopup = new VariantPopup(

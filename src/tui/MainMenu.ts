@@ -12,6 +12,7 @@ import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
+import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
 
 const log = (msg: string) => console.error(`[ha-tui:MainMenu] ${msg}`);
@@ -91,7 +92,7 @@ export class MainMenu {
     // Filter bar — always visible to avoid layout shifts
     this.filterBar = new TextRenderable(renderer, {
       id: "main-menu-filter",
-      content: t`${fg(theme.fgSubtle)("/")}`,
+      content: formatFilterBar(theme, ""),
       marginBottom: 1,
     });
     this.root.add(this.filterBar);
@@ -169,10 +170,6 @@ export class MainMenu {
 
   /** Update the filter bar display based on current filter text */
   private updateFilterBar(filter: string): void {
-    if (filter.length === 0) {
-      this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")}`;
-    } else {
-      this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)}`;
-    }
+    this.filterBar.content = formatFilterBar(this.theme, filter);
   }
 }
