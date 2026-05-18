@@ -10,7 +10,6 @@ import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { submenus, submenuTitles } from "../menu.js";
-import { formatBreadcrumb } from "./breadcrumb.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
@@ -42,7 +41,6 @@ export class SubmenuView {
 
   private root: BoxRenderable;
   private headerBar: TextRenderable;
-  private titleText: TextRenderable;
   private filterBar: TextRenderable;
   private menuList: MenuList;
   private helpBar: TextRenderable;
@@ -52,6 +50,7 @@ export class SubmenuView {
   private menuStack: string[] = [];
   private currentMenuId = "";
   private rootTitle: string;
+  private currentInfo: ConnectionInfo;
 
   constructor(
     renderer: CliRenderer,
@@ -63,7 +62,8 @@ export class SubmenuView {
     this.theme = theme;
     this.strings = strings;
     this.callbacks = options;
-    this.rootTitle = options.rootTitle ?? strings.app.menuFallbackTitle;
+    this.rootTitle = options.rootTitle ?? strings.app.name;
+    this.currentInfo = { status: "disconnected", url: "" };
 
     this.help = [
       { key: strings.keys.arrowsUD, action: strings.help.navigate },
@@ -82,25 +82,13 @@ export class SubmenuView {
       padding: 1,
     });
 
-    // Header bar — connection state (kept in sync by App)
-    const disconnectedInfo: ConnectionInfo = {
-      status: "disconnected",
-      url: "",
-    };
+    // Header bar — connection state + breadcrumb (kept in sync by App)
     this.headerBar = new TextRenderable(renderer, {
       id: "submenu-header",
-      content: formatHeaderBar(theme, strings, disconnectedInfo),
+      content: formatHeaderBar(theme, strings, this.currentInfo, this.getTitleParts()),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
-
-    // Title (dynamic based on submenu depth)
-    this.titleText = new TextRenderable(renderer, {
-      id: "submenu-title",
-      content: t``,
-      marginBottom: 1,
-    });
-    this.root.add(this.titleText);
 
     // Filter bar — always visible to avoid layout shifts
     this.filterBar = new TextRenderable(renderer, {
@@ -132,7 +120,8 @@ export class SubmenuView {
 
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
-    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info);
+    this.currentInfo = info;
+    this.rebuildHeader();
   }
 
   /** Open a submenu as the root level (resets the navigation stack) */
@@ -185,8 +174,8 @@ export class SubmenuView {
 
     this.currentMenuId = menuId;
 
-    // Update title
-    this.titleText.content = this.formatTitle();
+    // Update header with new breadcrumb
+    this.rebuildHeader();
 
     // Notify parent of title change for terminal tab title
     this.callbacks.onTitleChange?.(this.getTitleParts());
@@ -232,8 +221,13 @@ export class SubmenuView {
     }
   }
 
-  private formatTitle() {
-    return formatBreadcrumb(this.theme, this.getTitleParts());
+  private rebuildHeader(): void {
+    this.headerBar.content = formatHeaderBar(
+      this.theme,
+      this.strings,
+      this.currentInfo,
+      this.getTitleParts(),
+    );
   }
 
   /** Build the plain-text breadcrumb segments for the current submenu depth */

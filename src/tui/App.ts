@@ -87,7 +87,7 @@ export class App {
     this.submenuView = new SubmenuView(deps.renderer, deps.theme, deps.strings, {
       onAction: (item) => this.handleMenuAction(item),
       onBack: () => this.popView(),
-      rootTitle: options.title ?? deps.strings.app.menuFallbackTitle,
+      rootTitle: options.title ?? deps.strings.app.name,
       onTitleChange: (parts) => {
         const suffix = parts.slice(1).join(" \u203A ");
         setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
@@ -96,7 +96,7 @@ export class App {
 
     this.dashboardView = new DashboardView(deps.renderer, deps.theme, deps.strings, {
       onBack: () => this.popView(),
-      rootTitle: options.title ?? deps.strings.app.menuFallbackTitle,
+      rootTitle: options.title ?? deps.strings.app.name,
       onTitleChange: (parts) => {
         const suffix = parts.slice(1).join(" \u203A ");
         setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);

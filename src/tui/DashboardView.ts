@@ -14,7 +14,6 @@ import type { MenuItem } from "../types.js";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
-import { formatBreadcrumb } from "./breadcrumb.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { formatHeaderBar } from "./headerBar.js";
 import { MenuList } from "./MenuList.js";
@@ -99,8 +98,8 @@ export class DashboardView {
 
   private root: BoxRenderable;
   private headerBar: TextRenderable;
-  private titleText: TextRenderable;
   private filterBar: TextRenderable;
+  private statusText: TextRenderable;
   private menuList: MenuList;
   private helpBar: TextRenderable;
   private help: readonly HelpEntry[];
@@ -113,6 +112,12 @@ export class DashboardView {
   private entityCache = new Map<string, HassEntity>();
   private isFirstEntityUpdate = true;
   private initializationInProgress = false;
+
+  // Whether the status text line is currently in the flex tree
+  private statusVisible = true;
+
+  // Current connection info for header rebuilds
+  private currentInfo: ConnectionInfo;
 
   // Relative-time refresh timer (only runs when visible)
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -129,7 +134,7 @@ export class DashboardView {
     this.strings = strings;
     this.callbacks = options;
     this.titleParts = [
-      options.rootTitle ?? strings.app.menuFallbackTitle,
+      options.rootTitle ?? strings.app.name,
       strings.menu.dashboard.title,
     ];
 
@@ -150,20 +155,13 @@ export class DashboardView {
       padding: 1,
     });
 
-    const disconnectedInfo: ConnectionInfo = { status: "disconnected", url: "" };
+    this.currentInfo = { status: "disconnected", url: "" };
     this.headerBar = new TextRenderable(renderer, {
       id: "dashboard-header",
-      content: formatHeaderBar(theme, strings, disconnectedInfo),
+      content: formatHeaderBar(theme, strings, this.currentInfo, this.titleParts),
       marginBottom: 1,
     });
     this.root.add(this.headerBar);
-
-    this.titleText = new TextRenderable(renderer, {
-      id: "dashboard-title",
-      content: formatBreadcrumb(theme, this.titleParts),
-      marginBottom: 1,
-    });
-    this.root.add(this.titleText);
 
     this.filterBar = new TextRenderable(renderer, {
       id: "dashboard-filter",
@@ -172,6 +170,17 @@ export class DashboardView {
     });
     this.root.add(this.filterBar);
 
+    // Status text — shown while loading/disconnected/empty; sits above the menu list.
+    // Removed from the flex tree when entities are displayed.
+    this.statusText = new TextRenderable(renderer, {
+      id: "dashboard-status",
+      content: t`${fg(theme.fgMuted)("Connecting\u2026")}`,
+      marginBottom: 1,
+    });
+    this.root.add(this.statusText);
+
+    // Menu list — always in the tree so keyboard handling (Escape → back) and
+    // the bgElevated background fill work regardless of loading state.
     this.menuList = this.createMenuList([]);
     this.root.add(this.menuList);
 
@@ -186,6 +195,7 @@ export class DashboardView {
 
     renderer.on("resize", () => {
       this.helpBar.content = formatHelpBar(this.theme, this.help);
+      this.headerBar.content = formatHeaderBar(this.theme, this.strings, this.currentInfo, this.titleParts);
     });
 
     options.onTitleChange?.(this.titleParts);
@@ -195,7 +205,8 @@ export class DashboardView {
 
   /** Push a live connection info update to the header bar. */
   updateConnectionInfo(info: ConnectionInfo): void {
-    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info);
+    this.currentInfo = info;
+    this.headerBar.content = formatHeaderBar(this.theme, this.strings, info, this.titleParts);
   }
 
   /**
@@ -208,7 +219,7 @@ export class DashboardView {
     if (!conn) {
       this.cleanup();
       this.conn = null;
-      this.menuList.setItems([this.makePlaceholderItem("Disconnected")]);
+      this.showStatus("Disconnected");
       return;
     }
 
@@ -256,7 +267,7 @@ export class DashboardView {
     this.conn = conn;
 
     log("Fetching favorites and usage prediction");
-    this.menuList.setItems([this.makePlaceholderItem("Loading\u2026")]);
+    this.showStatus("Loading\u2026");
 
     try {
       const [homeResult, predictedResult] = await Promise.allSettled([
@@ -302,9 +313,7 @@ export class DashboardView {
       this.entityIds = merged;
 
       if (merged.length === 0) {
-        this.menuList.setItems([
-          this.makePlaceholderItem("No entities — add favorites in Home Assistant"),
-        ]);
+        this.showStatus("No entities — add favorites in Home Assistant");
         return;
       }
 
@@ -345,7 +354,7 @@ export class DashboardView {
       this.entityCache.set(entityId, entity);
       items.push(this.entityToMenuItem(entity));
     }
-    this.menuList.setItems(items);
+    this.showEntityList(items);
   }
 
   /**
@@ -447,14 +456,23 @@ export class DashboardView {
     return this.strings.status.hoursAgo(Math.floor(mins / 60));
   }
 
-  private makePlaceholderItem(text: string): MenuItem {
-    return {
-      id: `__placeholder__`,
-      icon: DEFAULT_ICON,
-      title: text,
-      description: "",
-      action: { type: "noop" },
-    };
+  /** Show a status message above the empty menu list. */
+  private showStatus(message: string): void {
+    if (!this.statusVisible) {
+      this.root.insertBefore(this.statusText, this.menuList);
+      this.statusVisible = true;
+    }
+    this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
+    this.menuList.setItems([]);
+  }
+
+  /** Hide the status message and populate the menu list with entities. */
+  private showEntityList(items: readonly MenuItem[]): void {
+    if (this.statusVisible) {
+      this.root.remove(this.statusText.id);
+      this.statusVisible = false;
+    }
+    this.menuList.setItems(items);
   }
 
   private createMenuList(items: readonly MenuItem[]): MenuList {
