@@ -35,6 +35,8 @@ export interface Locale {
     readonly favoritesGroup: string;
     /** Group header for the areas section in the dashboard */
     readonly areasGroup: string;
+    /** Group header for areas not assigned to a floor */
+    readonly otherAreasGroup: string;
     /** Loading message while fetching areas */
     readonly loadingAreas: string;
   };

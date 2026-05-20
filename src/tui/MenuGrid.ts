@@ -11,11 +11,13 @@ export type MenuGridItem = {
   readonly id: string;
   readonly primary: string;
   readonly secondary?: string | readonly string[];
+  readonly icon?: string;
 };
 
 export type MenuGridSection = {
   readonly id: string;
   readonly title: string;
+  readonly icon?: string;
   readonly items: readonly MenuGridItem[];
 };
 
@@ -30,6 +32,7 @@ export type MenuGridOptions = {
 type GridSectionState = {
   readonly id: string;
   readonly title: string;
+  readonly icon: string | undefined;
   readonly items: readonly MenuGridItem[];
   readonly heading: SectionHeading | null;
 };
@@ -111,6 +114,7 @@ export class MenuGrid {
           ? new SectionHeading(this.renderer, this.theme, {
               id: `${this.scroll.id}-heading-${section.id}`,
               title: section.title,
+              icon: section.icon,
               marginTop: isFirstSection ? 0 : 1,
             })
           : null;
@@ -122,6 +126,7 @@ export class MenuGrid {
       const state: GridSectionState = {
         id: section.id,
         title: section.title,
+        icon: section.icon,
         items: section.items,
         heading,
       };
@@ -132,6 +137,7 @@ export class MenuGrid {
           id: `${this.scroll.id}-tile-${item.id}`,
           primary: item.primary,
           secondary: item.secondary,
+          icon: item.icon,
           width: this.tileWidth,
         });
         this.tiles.set(item.id, tile);

@@ -21,6 +21,14 @@ import { MenuList } from "./MenuList.js";
 import { MenuGrid, type MenuGridItem, type MenuGridSection } from "./MenuGrid.js";
 import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
 import { EntityActionHandler } from "./entityActions.js";
+import {
+  areaDefaultMdi,
+  DEFAULT_ICON,
+  resolveAreaIcon,
+  resolveEntityIcon,
+  resolveFloorIcon,
+  resolveMdiIcon,
+} from "../data/iconResolver.js";
 import { fetchFrontendHomeData } from "../data/frontend.js";
 import { getCommonControlsUsagePrediction } from "../data/usagePrediction.js";
 import {
@@ -28,10 +36,15 @@ import {
   translateEntityState,
   type LocalizeFunc,
 } from "../data/stateTranslation.js";
+import { getAreasFloorHierarchy } from "../data/areasFloorHierarchy.js";
 import {
   fetchAreaRegistry,
   type AreaRegistryEntry,
 } from "../data/areaRegistry.js";
+import {
+  fetchFloorRegistry,
+  type FloorRegistryEntry,
+} from "../data/floorRegistry.js";
 import {
   fetchEntityRegistry,
   type EntityRegistryEntry,
@@ -71,6 +84,7 @@ export class DashboardView extends ConnectedView {
   private areaNames = new Map<string, string>();
 
   private areas: AreaRegistryEntry[] = [];
+  private floors: FloorRegistryEntry[] = [];
   private entityRegistry: EntityRegistryEntry[] = [];
   private deviceMap = new Map<string, DeviceRegistryEntry>();
   private onAreaSelect:
@@ -211,6 +225,7 @@ export class DashboardView extends ConnectedView {
         predictedResult,
         localizeResult,
         areasResult,
+        floorsResult,
         entityRegistryResult,
         deviceRegistryResult,
       ] = await Promise.allSettled([
@@ -218,6 +233,7 @@ export class DashboardView extends ConnectedView {
         getCommonControlsUsagePrediction(conn),
         fetchStateTranslations(conn),
         fetchAreaRegistry(conn),
+        fetchFloorRegistry(conn),
         fetchEntityRegistry(conn),
         fetchDeviceRegistry(conn),
       ]);
@@ -240,6 +256,13 @@ export class DashboardView extends ConnectedView {
         log(`Areas loaded: ${this.areas.length}`);
       } else {
         log(`Failed to fetch areas: ${String(areasResult.reason)}`);
+      }
+
+      if (floorsResult.status === "fulfilled") {
+        this.floors = floorsResult.value;
+        log(`Floors loaded: ${this.floors.length}`);
+      } else {
+        log(`Failed to fetch floors: ${String(floorsResult.reason)}`);
       }
 
       if (entityRegistryResult.status === "fulfilled") {
@@ -309,6 +332,7 @@ export class DashboardView extends ConnectedView {
     this.grid.clear();
     this.areaNames.clear();
     this.areas = [];
+    this.floors = [];
     this.entityRegistry = [];
     this.deviceMap = new Map();
     this.isFirstEntityUpdate = true;
@@ -359,7 +383,7 @@ export class DashboardView extends ConnectedView {
       favoriteItems.push(this.entityToGridItem(entity));
     }
 
-    const areaItems = this.buildAreaGridItems(allEntities);
+    const areaSections = this.buildAreaSections(allEntities);
     const sections: Array<MenuGridSection> = [];
 
     if (favoriteItems.length > 0) {
@@ -370,13 +394,7 @@ export class DashboardView extends ConnectedView {
       });
     }
 
-    if (areaItems.length > 0) {
-      sections.push({
-        id: "areas",
-        title: this.strings.dashboard.areasGroup,
-        items: areaItems,
-      });
-    }
+    sections.push(...areaSections);
 
     if (sections.length === 0) {
       this.showStatus("No entities — add favorites in Home Assistant");
@@ -439,10 +457,72 @@ export class DashboardView extends ConnectedView {
     }
   }
 
-  private buildAreaGridItems(allEntities: HassEntities): Array<MenuGridItem> {
+  private buildAreaSections(allEntities: HassEntities): Array<MenuGridSection> {
     this.areaNames.clear();
     if (this.areas.length === 0) return [];
 
+    const visibleAreaIds = this.getVisibleAreaIds(allEntities);
+    if (visibleAreaIds.size === 0) return [];
+
+    const areaById = new Map(
+      this.areas.map((area) => [area.area_id, area] as const),
+    );
+    const floorById = new Map(
+      this.floors.map((floor) => [floor.floor_id, floor] as const),
+    );
+    const home = getAreasFloorHierarchy(this.floors, this.areas);
+    const floorCount = home.floors.length + (home.areas.length > 0 ? 1 : 0);
+    const sections: Array<MenuGridSection> = [];
+
+    for (const floorStructure of home.floors) {
+      const items = this.visibleAreasToGridItems(
+        floorStructure.areas,
+        visibleAreaIds,
+        areaById,
+      );
+      if (items.length === 0) continue;
+
+      const floor = floorById.get(floorStructure.id);
+      const title =
+        floorCount > 1 && floor
+          ? floor.name
+          : this.strings.dashboard.areasGroup;
+      const icon = floor ? resolveFloorIcon(floor) : undefined;
+
+      sections.push({
+        id: `floor:${floorStructure.id}`,
+        title,
+        icon,
+        items,
+      });
+    }
+
+    const otherItems = this.visibleAreasToGridItems(
+      home.areas,
+      visibleAreaIds,
+      areaById,
+    );
+    if (otherItems.length > 0) {
+      const title =
+        floorCount > 1
+          ? this.strings.dashboard.otherAreasGroup
+          : this.strings.dashboard.areasGroup;
+
+      sections.push({
+        id: "areas-other",
+        title,
+        icon:
+          floorCount > 1
+            ? resolveMdiIcon(areaDefaultMdi(), DEFAULT_ICON)
+            : undefined,
+        items: otherItems,
+      });
+    }
+
+    return sections;
+  }
+
+  private getVisibleAreaIds(allEntities: HassEntities): Set<string> {
     const visibleAreaIds = new Set<string>();
     for (const entry of this.entityRegistry) {
       if (entry.disabled_by != null) continue;
@@ -455,21 +535,30 @@ export class DashboardView extends ConnectedView {
       const areaId = entry.area_id ?? device?.area_id ?? null;
       if (areaId) visibleAreaIds.add(areaId);
     }
+    return visibleAreaIds;
+  }
 
+  private visibleAreasToGridItems(
+    areaIds: ReadonlyArray<string>,
+    visibleAreaIds: Set<string>,
+    areaById: ReadonlyMap<string, AreaRegistryEntry>,
+  ): Array<MenuGridItem> {
     const items: Array<MenuGridItem> = [];
-    const sortedAreas = [...this.areas]
-      .filter((a) => visibleAreaIds.has(a.area_id))
-      .sort((a, b) => a.name.localeCompare(b.name));
 
-    for (const area of sortedAreas) {
+    for (const areaId of areaIds) {
+      if (!visibleAreaIds.has(areaId)) continue;
+      const area = areaById.get(areaId);
+      if (!area) continue;
+
       this.areaNames.set(area.area_id, area.name);
       items.push({
         id: `area:${area.area_id}`,
         primary: area.name,
+        icon: resolveAreaIcon(area),
       });
     }
 
-    return items;
+    return items.sort((a, b) => a.primary.localeCompare(b.primary));
   }
 
   private entityToGridItem(entity: HassEntity): MenuGridItem {
@@ -477,6 +566,7 @@ export class DashboardView extends ConnectedView {
       id: entity.entity_id,
       primary: entity.attributes.friendly_name ?? entity.entity_id,
       secondary: this.entityTileSecondary(entity),
+      icon: resolveEntityIcon(entity),
     };
   }
 

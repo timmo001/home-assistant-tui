@@ -32,6 +32,7 @@ export const en: Locale = {
   dashboard: {
     favoritesGroup: "Favorites",
     areasGroup: "Areas",
+    otherAreasGroup: "Other areas",
     loadingAreas: "Loading areas\u2026",
   },
 

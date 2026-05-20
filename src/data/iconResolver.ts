@@ -16,6 +16,8 @@
  *   frontend/node_modules/@mdi/svg/meta.json  (name → codepoint)
  */
 import type { HassEntity } from "home-assistant-js-websocket";
+import { type AreaRegistryEntry } from "./areaRegistry.js";
+import { type FloorRegistryEntry } from "./floorRegistry.js";
 import { MDI_CODEPOINTS } from "./mdiCodepoints.js";
 
 /** Generic fallback glyph shown when no MDI mapping is found. */
@@ -88,6 +90,59 @@ export const DOMAIN_ICONS: Readonly<Record<string, string>> =
  *   2. Domain default from DOMAIN_ICONS
  *   3. DEFAULT_ICON fallback
  */
+/** Default MDI icon for areas without a custom icon (HA area picker). */
+export function areaDefaultMdi(): string {
+  return "mdi:texture-box";
+}
+
+/** Default MDI icon for floors without a custom icon. */
+export function floorDefaultMdi(
+  floor: Pick<FloorRegistryEntry, "level">,
+): string {
+  switch (floor.level) {
+    case 0:
+      return "mdi:home-floor-0";
+    case 1:
+      return "mdi:home-floor-1";
+    case 2:
+      return "mdi:home-floor-2";
+    case 3:
+      return "mdi:home-floor-3";
+    case -1:
+      return "mdi:home-floor-negative-1";
+    default:
+      return "mdi:home";
+  }
+}
+
+export function resolveMdiIcon(mdiName: string, fallback: string): string {
+  return mdiToNerdFont(mdiName) ?? fallback;
+}
+
+export function resolveAreaIcon(
+  area: Pick<AreaRegistryEntry, "icon">,
+): string {
+  const fallback =
+    MDI_CODEPOINTS["texture-box"] ?? DEFAULT_ICON;
+  if (area.icon) {
+    return resolveMdiIcon(area.icon, fallback);
+  }
+  return fallback;
+}
+
+export function resolveFloorIcon(
+  floor: Pick<FloorRegistryEntry, "icon" | "level">,
+): string {
+  const fallback = resolveMdiIcon(
+    floorDefaultMdi(floor),
+    MDI_CODEPOINTS["home"] ?? DEFAULT_ICON,
+  );
+  if (floor.icon) {
+    return resolveMdiIcon(floor.icon, fallback);
+  }
+  return fallback;
+}
+
 export function resolveEntityIcon(entity: HassEntity): string {
   const attrIcon = entity.attributes["icon"] as string | undefined;
   if (typeof attrIcon === "string" && attrIcon.length > 0) {

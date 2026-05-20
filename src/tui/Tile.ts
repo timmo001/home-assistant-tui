@@ -16,6 +16,8 @@ export type TileOptions = {
   readonly primary: string;
   /** Secondary text */
   readonly secondary?: string | readonly string[];
+  /** Nerd Font MDI glyph shown before the primary text */
+  readonly icon?: string;
   /** Width */
   readonly width?: number;
   /** Height */
@@ -40,6 +42,19 @@ function formatSecondary(
   return new StyledText(chunks);
 }
 
+function formatPrimary(
+  theme: Theme,
+  primary: string,
+  icon: string | undefined,
+  selected: boolean,
+): StyledText {
+  const color = selected ? theme.accent : theme.fg;
+  if (icon) {
+    return t`${fg(color)(icon)} ${fg(color)(primary)}`;
+  }
+  return t`${fg(color)(primary)}`;
+}
+
 /**
  * Compact bordered card with a primary title and optional secondary line.
  */
@@ -50,12 +65,14 @@ export class Tile {
   private secondaryText?: TextRenderable;
   private primary: string;
   private secondary: string | readonly string[] | undefined;
+  private icon: string | undefined;
   private isSelected = false;
 
   constructor(renderer: CliRenderer, theme: Theme, options: TileOptions) {
     this.theme = theme;
     this.primary = options.primary;
     this.secondary = options.secondary;
+    this.icon = options.icon;
 
     this.root = new BoxRenderable(renderer, {
       id: options.id,
@@ -71,7 +88,7 @@ export class Tile {
 
     this.primaryText = new TextRenderable(renderer, {
       id: `${options.id}-primary`,
-      content: t`${fg(theme.fg)(options.primary)}`,
+      content: formatPrimary(theme, options.primary, options.icon, false),
       flexGrow: 1,
     });
     if (!options.secondary) {
@@ -122,8 +139,12 @@ export class Tile {
   }
 
   private applyContentStyles(): void {
-    const primaryColor = this.isSelected ? this.theme.accent : this.theme.fg;
-    this.primaryText.content = t`${fg(primaryColor)(this.primary)}`;
+    this.primaryText.content = formatPrimary(
+      this.theme,
+      this.primary,
+      this.icon,
+      this.isSelected,
+    );
 
     if (this.secondaryText && this.secondary !== undefined) {
       this.secondaryText.content = formatSecondary(this.theme, this.secondary);
