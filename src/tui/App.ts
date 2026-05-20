@@ -244,6 +244,11 @@ export class App {
         this.testView.handleKeyPress(key);
         return;
       }
+
+      if (this.activeView === "dashboard") {
+        this.dashboardView.handleKeyPress(key);
+        return;
+      }
     });
 
     // --- Determine initial view ---
@@ -279,6 +284,7 @@ export class App {
     }
 
     this.showView(startView);
+    this.focusActiveView();
   }
 
   /** Push a live connection state update to all persistent views. */

@@ -22,6 +22,8 @@ const log = (msg: string) => console.error(`[ha-tui:entityActions] ${msg}`);
 export interface EntityActionContext {
   readonly getConn: () => Connection | null;
   readonly getEntityState?: (entityId: string) => HassEntity | undefined;
+  /** When set, used instead of the menu list selection for entity keybinds */
+  readonly getSelectedEntityId?: () => string | undefined;
   readonly baseUrl: string;
   readonly renderer: CliRenderer;
   readonly theme: Theme;
@@ -63,13 +65,15 @@ export class EntityActionHandler {
     key: KeyEvent,
     isEntityItem?: (item: MenuItem) => boolean,
   ): boolean {
-    const item = this.ctx.menuList.getSelectedItem();
-    if (!item) return false;
+    const overrideId = this.ctx.getSelectedEntityId?.();
+    const entityId =
+      overrideId ?? this.ctx.menuList.getSelectedItem()?.id;
+    if (!entityId) return false;
 
-    // Allow caller to gate which items are entities
-    if (isEntityItem && !isEntityItem(item)) return false;
-
-    const entityId = item.id;
+    if (!overrideId) {
+      const menuItem = this.ctx.menuList.getSelectedItem();
+      if (menuItem && isEntityItem && !isEntityItem(menuItem)) return false;
+    }
 
     // Ctrl+Y: copy entity ID
     if (key.name === "y" && key.ctrl) {

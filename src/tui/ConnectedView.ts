@@ -199,18 +199,22 @@ export abstract class ConnectedView {
       this.callbacks.onTitleChange?.(this.titleParts);
       this.onBecameVisible();
     } else {
+      this.blur();
       this.onBecameHidden();
     }
   }
 
   focus(): void {
+    if (!this.isVisible) return;
     this.menuList.focus();
   }
 
   resetAndFocus(): void {
     this.menuList.resetFilter();
     this.menuList.resetSelection();
-    this.menuList.focus();
+    if (this.isVisible) {
+      this.menuList.focus();
+    }
   }
 
   blur(): void {

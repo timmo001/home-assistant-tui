@@ -3,17 +3,17 @@ import {
   type KeyEvent,
   BoxRenderable,
   TextRenderable,
+  ScrollBoxRenderable,
   t,
   fg,
   bold,
-  ScrollBoxRenderable,
 } from "@opentui/core";
 import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { formatHelpBar, globalHelp, type HelpEntry } from "./helpBar.js";
 import { HeaderBlock } from "./HeaderBlock.js";
-import { Tile } from "./Tile.js";
+import { MenuGrid } from "./MenuGrid.js";
 
 function randomTemperature(): number {
   return +(Math.random() * 8 + 18).toFixed(1);
@@ -44,7 +44,8 @@ export class TestView {
   private root: BoxRenderable;
   private header: HeaderBlock;
   private bodyText: TextRenderable;
-  private scrollable: ScrollBoxRenderable;
+  private scroll: ScrollBoxRenderable;
+  private tileGrid: MenuGrid;
   private helpBar: TextRenderable;
   private help: readonly HelpEntry[];
   private titleParts: readonly string[];
@@ -93,29 +94,36 @@ export class TestView {
     });
     this.root.add(this.bodyText);
 
-    this.scrollable = new ScrollBoxRenderable(renderer, {
-      id: "test-scrollable",
+    this.scroll = new ScrollBoxRenderable(renderer, {
+      id: "test-scroll",
       flexGrow: 1,
       width: "100%",
       scrollY: true,
       scrollX: false,
-      focusable: true,
+      focusable: false,
       contentOptions: {
         flexDirection: "row",
         flexWrap: "wrap",
         gap: 1,
       },
     });
-    this.root.add(this.scrollable);
+    this.root.add(this.scroll);
 
-    Array.from({ length: 10 }).forEach((_, idx) => {
-      const tile = new Tile(renderer, theme, {
+    this.tileGrid = new MenuGrid(renderer, theme, {
+      id: "test-grid",
+      scroll: this.scroll,
+    });
+
+    this.tileGrid.setItems(
+      Array.from({ length: 10 }, (_, idx) => ({
         id: `test-tile-${idx}`,
         primary: `Primary Title ${idx + 1}`,
-        secondary: [`${randomTemperature()}°C`, `${randomMinutes()} minutes ago`],
-      });
-      this.scrollable.add(tile.box);
-    });
+        secondary: [
+          `${randomTemperature()}°C`,
+          `${randomMinutes()} minutes ago`,
+        ],
+      })),
+    );
 
     this.helpBar = new TextRenderable(renderer, {
       id: "test-help",
@@ -142,20 +150,22 @@ export class TestView {
     this.root.visible = visible;
     if (visible) {
       this.callbacks.onTitleChange?.(this.titleParts);
+    } else {
+      this.blur();
     }
   }
 
   focus(): void {
-    this.scrollable.focus();
+    this.tileGrid.focus();
   }
 
   resetAndFocus(): void {
-    this.scrollable.scrollTop = 0;
-    this.scrollable.focus();
+    this.tileGrid.resetSelection();
+    this.focus();
   }
 
   blur(): void {
-    this.scrollable.blur();
+    this.tileGrid.blur();
   }
 
   handleKeyPress(key: KeyEvent): boolean {
@@ -163,7 +173,7 @@ export class TestView {
       this.callbacks.onBack();
       return true;
     }
-    return this.scrollable.handleKeyPress(key);
+    return this.tileGrid.handleKeyPress(key);
   }
 
   destroy(): void {

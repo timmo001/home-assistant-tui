@@ -137,6 +137,9 @@ export class SubmenuView {
   /** Show or hide the submenu view */
   setVisible(visible: boolean): void {
     this.root.visible = visible;
+    if (!visible) {
+      this.blur();
+    }
   }
 
   /** Give keyboard focus to the menu list */

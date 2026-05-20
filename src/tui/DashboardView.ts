@@ -1,4 +1,10 @@
-import type { CliRenderer } from "@opentui/core";
+import {
+  type CliRenderer,
+  type KeyEvent,
+  ScrollBoxRenderable,
+  t,
+  fg,
+} from "@opentui/core";
 import {
   subscribeEntities,
   type UnsubscribeFunc,
@@ -8,12 +14,11 @@ import type {
   HassEntity,
   HassEntities,
 } from "home-assistant-js-websocket";
-import type { MenuItem } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { globalHelp, type HelpEntry } from "./helpBar.js";
-import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
+import { MenuGrid, type MenuGridItem, type MenuGridSection } from "./MenuGrid.js";
 import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
 import { EntityActionHandler } from "./entityActions.js";
 import { fetchFrontendHomeData } from "../data/frontend.js";
@@ -23,8 +28,6 @@ import {
   translateEntityState,
   type LocalizeFunc,
 } from "../data/stateTranslation.js";
-import { resolveEntityIcon } from "../data/iconResolver.js";
-import { mdiToNerdFont, DEFAULT_ICON } from "../data/iconResolver.js";
 import {
   fetchAreaRegistry,
   type AreaRegistryEntry,
@@ -46,47 +49,35 @@ const DEFAULT_LIMIT = 8;
 // ---------------------------------------------------------------------------
 
 export interface DashboardViewOptions extends ConnectedViewOptions {
-  /** Called when the user selects an area from the areas section */
+  /** Called when the user selects an area tile */
   readonly onAreaSelect?: (areaId: string, areaName: string) => void;
 }
 
 /**
- * Dashboard view — shows favorites + usage-predicted entities with live state updates.
+ * Dashboard view — favorites, predicted entities, and areas as tile grids.
  *
- * Entity list is built from:
- *   1. `favorite_entities` stored in the HA frontend system data (key "home")
- *   2. Server-side usage-predicted common controls (usage_prediction/common_control)
- *
- * State updates are driven by a single shared `subscribeEntities` subscription
- * (via home-assistant-js-websocket's collection cache). The callback is memoised:
- * only entities in our display set are examined, and only rows whose `state`,
- * `last_changed`, or `friendly_name` actually changed are patched in-place via
- * `MenuList.patchItemById` — preserving selection and scroll position.
- *
- * Relative timestamps are refreshed every 60 s via a setInterval that only runs
- * while the view is visible.
+ * A single view-level scroll box contains all sections; each section starts
+ * with a full-width heading row, then wrapping tiles.
  */
 export class DashboardView extends ConnectedView {
-  // Domain-specific state
   private localize: LocalizeFunc | null = null;
   private unsubEntities: UnsubscribeFunc | null = null;
   private entityIds: readonly string[] = [];
-  /** Memoised per-entity state — used to skip unchanged entities on each callback. */
   private entityCache = new Map<string, HassEntity>();
   private isFirstEntityUpdate = true;
 
-  // Area section state
+  private scroll: ScrollBoxRenderable;
+  private grid: MenuGrid;
+  private areaNames = new Map<string, string>();
+
   private areas: AreaRegistryEntry[] = [];
   private entityRegistry: EntityRegistryEntry[] = [];
-  private deviceMap: Map<string, DeviceRegistryEntry> = new Map();
+  private deviceMap = new Map<string, DeviceRegistryEntry>();
   private onAreaSelect:
     | ((areaId: string, areaName: string) => void)
     | undefined;
 
-  // Relative-time refresh timer (only runs when visible)
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
-
-  // Entity action handler (shared keybinds for services/clipboard/browser)
   private entityActions: EntityActionHandler;
 
   constructor(
@@ -103,9 +94,35 @@ export class DashboardView extends ConnectedView {
 
     this.onAreaSelect = options.onAreaSelect;
 
+    this.root.remove(this.filterBar.id);
+    this.root.remove(this.menuList.id);
+
+    this.scroll = new ScrollBoxRenderable(renderer, {
+      id: "dashboard-scroll",
+      flexGrow: 1,
+      width: "100%",
+      scrollY: true,
+      scrollX: false,
+      focusable: false,
+      contentOptions: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 1,
+      },
+    });
+
+    this.grid = new MenuGrid(renderer, theme, {
+      id: "dashboard-grid",
+      scroll: this.scroll,
+    });
+
+    this.root.insertBefore(this.scroll, this.helpBar);
+
     this.entityActions = new EntityActionHandler({
       getConn: () => this.conn,
       getEntityState: (entityId) => this.entityCache.get(entityId),
+      getSelectedEntityId: () =>
+        this.grid.hasEntries() ? this.getSelectedEntityId() : undefined,
       baseUrl: this.baseUrl,
       renderer: this.renderer,
       theme: this.theme,
@@ -115,11 +132,53 @@ export class DashboardView extends ConnectedView {
     });
   }
 
-  // ── ConnectedView hooks ───────────────────────────────────────────────────
+  handleKeyPress(key: KeyEvent): boolean {
+    if (key.name === "escape" || key.name === "backspace") {
+      this.callbacks.onBack();
+      return true;
+    }
+
+    if (this.entityActions.hasPopup) {
+      return this.entityActions.handleKeyPress(key);
+    }
+
+    if (this.grid.handleKeyPress(key)) {
+      return true;
+    }
+
+    if (key.name === "return") {
+      const selectedId = this.grid.getSelectedId();
+      if (selectedId?.startsWith("area:")) {
+        const areaId = selectedId.slice(5);
+        const areaName = this.areaNames.get(areaId) ?? areaId;
+        this.onAreaSelect?.(areaId, areaName);
+        return true;
+      }
+      return this.entityActions.handleKeyPress(key);
+    }
+
+    return this.entityActions.handleKeyPress(key);
+  }
+
+  override focus(): void {
+    if (!this.isVisible) return;
+    this.grid.focus();
+  }
+
+  override blur(): void {
+    this.grid.blur();
+  }
+
+  override resetAndFocus(): void {
+    this.grid.resetSelection();
+    if (this.isVisible) {
+      this.focus();
+    }
+  }
 
   protected buildHelp(): readonly HelpEntry[] {
     return [
-      { key: this.strings.keys.arrowsUD, action: this.strings.help.navigate },
+      { key: "←→↑↓", action: this.strings.help.navigate },
       { key: this.strings.keys.enter, action: this.strings.help.toggle },
       { key: this.strings.keys.ctrl.y, action: this.strings.help.copyId },
       { key: this.strings.keys.ctrl.w, action: this.strings.help.openInfo },
@@ -127,39 +186,18 @@ export class DashboardView extends ConnectedView {
       { key: this.strings.keys.ctrl.d, action: this.strings.help.openDetails },
       { key: this.strings.keys.ctrl.h, action: this.strings.help.openHistory },
       { key: this.strings.keys.ctrl.r, action: this.strings.help.openRelated },
-      { key: this.strings.keys.typeInput, action: this.strings.help.filter },
       { key: this.strings.keys.esc, action: this.strings.help.back },
       ...globalHelp(this.strings),
     ];
   }
 
+  /** Stub list — keyboard is routed via {@link handleKeyPress} instead. */
   protected createMenuList(): MenuList {
     return new MenuList(this.renderer, {
-      id: "dashboard-list",
+      id: "dashboard-list-stub",
       items: [],
       theme: this.theme,
-      onSelect: (item) => {
-        // Check if this is an area item (prefixed with "area:")
-        if (item.id.startsWith("area:") && this.onAreaSelect) {
-          const areaId = item.id.slice(5); // Remove "area:" prefix
-          this.onAreaSelect(areaId, item.title);
-        }
-      },
-      onFilterChange: (filter) => this.updateFilterBar(filter),
-      onEscape: () => this.callbacks.onBack(),
-      onBack: () => this.callbacks.onBack(),
-      onKeyPress: (key) => {
-        // If a popup is open, route there
-        if (this.entityActions.hasPopup) {
-          return this.entityActions.handleKeyPress(key);
-        }
-        // Entity actions — skip area items
-        return this.entityActions.handleKeyPress(
-          key,
-          (item) => !item.id.startsWith("area:"),
-        );
-      },
-      wrapSelection: true,
+      onSelect: () => {},
     });
   }
 
@@ -184,7 +222,6 @@ export class DashboardView extends ConnectedView {
         fetchDeviceRegistry(conn),
       ]);
 
-      // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
         log("Connection changed during initialization — aborting");
         return;
@@ -240,7 +277,6 @@ export class DashboardView extends ConnectedView {
           ? predictedResult.value.entities
           : [];
 
-      // Merge: favorites first, then predicted, dedup, cap at limit
       const limit = Math.max(DEFAULT_LIMIT, favorites.length);
       const seen = new Set<string>(favorites);
       const merged = [...favorites];
@@ -254,16 +290,9 @@ export class DashboardView extends ConnectedView {
       log(`Entity list (${merged.length}): ${merged.join(", ")}`);
       this.entityIds = merged;
 
-      if (merged.length === 0 && this.areas.length === 0) {
-        this.showStatus("No entities — add favorites in Home Assistant");
-        return;
-      }
-
-      // Subscribe to entity states — first callback populates the list,
-      // subsequent callbacks patch only changed rows in-place.
       this.isFirstEntityUpdate = true;
       this.unsubEntities = subscribeEntities(conn, (entities) => {
-        if (this.conn !== conn) return; // stale subscription guard
+        if (this.conn !== conn) return;
         this.handleEntityUpdate(entities);
       });
     } finally {
@@ -277,6 +306,8 @@ export class DashboardView extends ConnectedView {
     this.localize = null;
     this.entityCache.clear();
     this.entityIds = [];
+    this.grid.clear();
+    this.areaNames.clear();
     this.areas = [];
     this.entityRegistry = [];
     this.deviceMap = new Map();
@@ -284,61 +315,89 @@ export class DashboardView extends ConnectedView {
     this.stopRefreshTimer();
   }
 
+  protected override showStatus(message: string): void {
+    this.grid.clear();
+    this.scroll.visible = false;
+    if (!this.statusVisible) {
+      this.root.insertBefore(this.statusText, this.scroll);
+      this.statusVisible = true;
+    }
+    this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
+  }
+
   protected override onBecameVisible(): void {
     this.startRefreshTimer();
     this.refreshTimestamps();
+    if (this.grid.hasEntries()) {
+      this.grid.focus();
+    }
   }
 
   protected override onBecameHidden(): void {
     this.stopRefreshTimer();
   }
 
-  // ── Entity state handling ─────────────────────────────────────────────────
-
   private handleEntityUpdate(allEntities: HassEntities): void {
-    if (this.entityIds.length === 0) return;
-
     if (this.isFirstEntityUpdate) {
       this.isFirstEntityUpdate = false;
-      this.populateInitialItems(allEntities);
+      this.populateGrids(allEntities);
       return;
     }
 
-    this.applyIncrementalUpdates(allEntities);
+    if (this.entityIds.length > 0) {
+      this.applyIncrementalUpdates(allEntities);
+    }
   }
 
-  /**
-   * First entities snapshot: build the full item list preserving display order.
-   * Includes entity favorites/predicted items followed by the areas section.
-   */
-  private populateInitialItems(allEntities: HassEntities): void {
-    const items: MenuItem[] = [];
+  private populateGrids(allEntities: HassEntities): void {
+    const favoriteItems: Array<MenuGridItem> = [];
+
     for (const entityId of this.entityIds) {
       const entity = allEntities[entityId];
       if (!entity) continue;
       this.entityCache.set(entityId, entity);
-      items.push(this.entityToMenuItem(entity));
+      favoriteItems.push(this.entityToGridItem(entity));
     }
 
-    // Append visible areas (areas that have at least one entity)
-    const areaItems = this.buildAreaItems(allEntities);
-    items.push(...areaItems);
+    const areaItems = this.buildAreaGridItems(allEntities);
+    const sections: Array<MenuGridSection> = [];
 
+    if (favoriteItems.length > 0) {
+      sections.push({
+        id: "favorites",
+        title: this.strings.dashboard.favoritesGroup,
+        items: favoriteItems,
+      });
+    }
+
+    if (areaItems.length > 0) {
+      sections.push({
+        id: "areas",
+        title: this.strings.dashboard.areasGroup,
+        items: areaItems,
+      });
+    }
+
+    if (sections.length === 0) {
+      this.showStatus("No entities — add favorites in Home Assistant");
+      return;
+    }
+
+    this.grid.setSections(sections);
+    this.scroll.visible = true;
     this.hideStatus();
-    this.menuList.setItems(items);
+    if (this.isVisible) {
+      this.focus();
+    }
   }
 
-  /**
-   * Subsequent entity callbacks: only patch rows whose state, last_changed,
-   * or friendly_name actually changed — preserving selection and scroll.
-   */
   private applyIncrementalUpdates(allEntities: HassEntities): void {
     for (const entityId of this.entityIds) {
       const entity = allEntities[entityId];
       if (!entity) continue;
 
       const cached = this.entityCache.get(entityId);
-      if (!cached) continue; // not yet in cache — will be handled on next full pass
+      if (!cached) continue;
 
       const stateChanged =
         cached.state !== entity.state ||
@@ -349,31 +408,22 @@ export class DashboardView extends ConnectedView {
       if (!stateChanged && !nameChanged) continue;
 
       this.entityCache.set(entityId, entity);
-
-      const patch: { title?: string; description?: string } = {};
-      if (nameChanged) {
-        patch.title = entity.attributes.friendly_name ?? entity.entity_id;
-      }
-      patch.description = this.formatDescription(entity);
-      this.menuList.patchItemById(entityId, patch);
-    }
-  }
-
-  /**
-   * Refresh relative timestamps for all cached entities.
-   * Called on visibility, and every 60 s by the refresh timer.
-   */
-  private refreshTimestamps(): void {
-    for (const entityId of this.entityIds) {
-      const entity = this.entityCache.get(entityId);
-      if (!entity) continue;
-      this.menuList.patchItemById(entityId, {
-        description: this.formatDescription(entity),
+      this.grid.updateItem(entityId, {
+        primary: entity.attributes.friendly_name ?? entity.entity_id,
+        secondary: this.entityTileSecondary(entity),
       });
     }
   }
 
-  // ── Timer ─────────────────────────────────────────────────────────────────
+  private refreshTimestamps(): void {
+    for (const entityId of this.entityIds) {
+      const entity = this.entityCache.get(entityId);
+      if (!entity) continue;
+      this.grid.updateItem(entityId, {
+        secondary: this.entityTileSecondary(entity),
+      });
+    }
+  }
 
   private startRefreshTimer(): void {
     if (this.refreshTimer !== null) return;
@@ -389,23 +439,16 @@ export class DashboardView extends ConnectedView {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  /**
-   * Build area menu items for the "Areas" group section.
-   * Only includes areas that have at least one non-disabled, non-unavailable entity.
-   */
-  private buildAreaItems(allEntities: HassEntities): MenuItem[] {
+  private buildAreaGridItems(allEntities: HassEntities): Array<MenuGridItem> {
+    this.areaNames.clear();
     if (this.areas.length === 0) return [];
 
-    // Build a set of area IDs that have visible entities
     const visibleAreaIds = new Set<string>();
     for (const entry of this.entityRegistry) {
       if (entry.disabled_by != null) continue;
       const entity = allEntities[entry.entity_id];
       if (!entity || entity.state === "unavailable") continue;
 
-      // Determine entity's area: direct assignment or via device
       const device = entry.device_id
         ? this.deviceMap.get(entry.device_id)
         : undefined;
@@ -413,48 +456,36 @@ export class DashboardView extends ConnectedView {
       if (areaId) visibleAreaIds.add(areaId);
     }
 
-    const groupLabel = this.strings.dashboard.areasGroup;
-    const items: MenuItem[] = [];
-
-    // Sort areas alphabetically by name
+    const items: Array<MenuGridItem> = [];
     const sortedAreas = [...this.areas]
       .filter((a) => visibleAreaIds.has(a.area_id))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const area of sortedAreas) {
-      const icon = area.icon
-        ? (mdiToNerdFont(area.icon) ?? DEFAULT_ICON)
-        : DEFAULT_ICON;
+      this.areaNames.set(area.area_id, area.name);
       items.push({
         id: `area:${area.area_id}`,
-        icon,
-        title: area.name,
-        description: "",
-        action: { type: "noop" },
-        group: groupLabel,
+        primary: area.name,
       });
     }
 
     return items;
   }
 
-  private entityToMenuItem(entity: HassEntity): MenuItem {
+  private entityToGridItem(entity: HassEntity): MenuGridItem {
     return {
       id: entity.entity_id,
-      icon: resolveEntityIcon(entity),
-      title: entity.attributes.friendly_name ?? entity.entity_id,
-      description: this.formatDescription(entity),
-      action: { type: "noop" },
-      group: this.strings.dashboard.favoritesGroup,
+      primary: entity.attributes.friendly_name ?? entity.entity_id,
+      secondary: this.entityTileSecondary(entity),
     };
   }
 
-  private formatDescription(entity: HassEntity): string {
+  private entityTileSecondary(entity: HassEntity): readonly string[] {
     const stateDisplay = this.localize
       ? translateEntityState(entity, this.localize)
       : entity.state;
     const rel = this.formatRelativeTime(entity.last_changed);
-    return rel ? `${stateDisplay} · ${rel}` : stateDisplay;
+    return rel ? [stateDisplay, rel] : [stateDisplay];
   }
 
   private formatRelativeTime(isoString: string): string {
@@ -466,7 +497,11 @@ export class DashboardView extends ConnectedView {
     return this.strings.status.ago.hours(Math.floor(mins / 60));
   }
 
-  private updateFilterBar(filter: string): void {
-    this.filterBar.content = formatFilterBar(this.theme, filter);
+  private getSelectedEntityId(): string | undefined {
+    const id = this.grid.getSelectedId();
+    if (!id || id.startsWith("area:")) {
+      return undefined;
+    }
+    return id;
   }
 }

@@ -47,10 +47,15 @@ export class Tile {
   private theme: Theme;
   private root: BoxRenderable;
   private primaryText: TextRenderable;
-  private secondaryText: TextRenderable;
+  private secondaryText?: TextRenderable;
+  private primary: string;
+  private secondary: string | readonly string[] | undefined;
+  private isSelected = false;
 
   constructor(renderer: CliRenderer, theme: Theme, options: TileOptions) {
     this.theme = theme;
+    this.primary = options.primary;
+    this.secondary = options.secondary;
 
     this.root = new BoxRenderable(renderer, {
       id: options.id,
@@ -61,6 +66,7 @@ export class Tile {
       paddingX: 1,
       borderStyle: "rounded",
       borderColor: theme.accent,
+      shouldFill: false,
     });
 
     this.primaryText = new TextRenderable(renderer, {
@@ -68,17 +74,20 @@ export class Tile {
       content: t`${fg(theme.fg)(options.primary)}`,
       flexGrow: 1,
     });
+    if (!options.secondary) {
+      this.primaryText.marginTop = 1;
+      this.primaryText.marginBottom = 1;
+    }
     this.root.add(this.primaryText);
 
-    this.secondaryText = new TextRenderable(renderer, {
-      id: `${options.id}-secondary`,
-      content: options.secondary
-        ? formatSecondary(theme, options.secondary)
-        : t``,
-      marginTop: 1,
-      visible: options.secondary !== undefined,
-    });
-    this.root.add(this.secondaryText);
+    if (options.secondary) {
+      this.secondaryText = new TextRenderable(renderer, {
+        id: `${options.id}-secondary`,
+        content: formatSecondary(theme, options.secondary),
+        marginTop: 1,
+      });
+      this.root.add(this.secondaryText);
+    }
   }
 
   get box(): BoxRenderable {
@@ -86,17 +95,38 @@ export class Tile {
   }
 
   setPrimary(primary: string): void {
-    this.primaryText.content = t`${fg(this.theme.fg)(primary)}`;
+    this.primary = primary;
+    this.applyContentStyles();
   }
 
   setSecondary(secondary: string | readonly string[] | undefined): void {
-    if (secondary === undefined) {
-      this.secondaryText.visible = false;
-      this.secondaryText.content = t``;
+    if (!secondary || !this.secondaryText) {
       return;
     }
 
+    this.secondary = secondary;
     this.secondaryText.visible = true;
-    this.secondaryText.content = formatSecondary(this.theme, secondary);
+    this.applyContentStyles();
+  }
+
+  setSelected(selected: boolean): void {
+    this.isSelected = selected;
+    if (selected) {
+      this.root.shouldFill = true;
+      this.root.backgroundColor = this.theme.bgSelected;
+    } else {
+      this.root.shouldFill = false;
+      this.root.backgroundColor = undefined;
+    }
+    this.applyContentStyles();
+  }
+
+  private applyContentStyles(): void {
+    const primaryColor = this.isSelected ? this.theme.accent : this.theme.fg;
+    this.primaryText.content = t`${fg(primaryColor)(this.primary)}`;
+
+    if (this.secondaryText && this.secondary !== undefined) {
+      this.secondaryText.content = formatSecondary(this.theme, this.secondary);
+    }
   }
 }

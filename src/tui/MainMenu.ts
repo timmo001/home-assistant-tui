@@ -125,6 +125,9 @@ export class MainMenu {
   /** Show or hide the main menu view */
   setVisible(visible: boolean): void {
     this.root.visible = visible;
+    if (!visible) {
+      this.blur();
+    }
   }
 
   /** Give keyboard focus to the menu list */

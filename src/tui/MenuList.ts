@@ -312,6 +312,13 @@ export class MenuList extends ScrollBoxRenderable {
   }
 
   /** Return the currently highlighted item */
+  /** Whether the current selection is the first selectable row (not a group header). */
+  isFirstSelectableSelected(): boolean {
+    if (this._rows.length === 0) return true;
+    const first = this._nextSelectableIndex(-1, 1);
+    return this._selectedIndex === first;
+  }
+
   getSelectedItem(): MenuItem | undefined {
     const row = this._rows[this._selectedIndex];
     if (!row || row.isGroupHeader || row.isSentinel) return undefined;
