@@ -34,7 +34,7 @@ export class SectionHeading {
       width: "100%",
       flexShrink: 0,
       alignItems: "center",
-      gap: 1,
+      shouldFill: false,
       marginTop: options.marginTop,
       marginBottom: options.marginBottom ?? 1,
     });
@@ -44,15 +44,6 @@ export class SectionHeading {
       content: formatTitle(theme, options.title),
     });
     this.root.add(this.titleText);
-
-    this.root.add(
-      new BoxRenderable(renderer, {
-        id: `${options.id}-rule`,
-        flexGrow: 1,
-        height: 1,
-        backgroundColor: theme.surface,
-      }),
-    );
   }
 
   get box(): BoxRenderable {
