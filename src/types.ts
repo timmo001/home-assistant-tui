@@ -29,7 +29,8 @@ export type ViewId =
   | "setup"
   | "dashboard"
   | "entities"
-  | "areaEntities";
+  | "areaEntities"
+  | "test";
 
 /** Action that suspends the TUI and runs a command with inherited stdio */
 export interface CommandAction {

@@ -143,6 +143,12 @@ export const en: Locale = {
     settingsTitle: "Settings",
   },
 
+  testView: {
+    description: "Sandbox view for exercising TUI scaffolding.",
+    heading: "Test View",
+    title: "Test",
+  },
+
   status: {
     ago: {
       hours: (h) => `${h}h ago`,

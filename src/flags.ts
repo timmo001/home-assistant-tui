@@ -94,6 +94,7 @@ against the menu registry:
   home-assistant-tui settings             Open the settings submenu
   home-assistant-tui settings connection  Open connection settings
   home-assistant-tui dashboard            Open the dashboard
+  home-assistant-tui test-view            Open the TUI sandbox view
 
 Options:
   --help, -h  Show this help message

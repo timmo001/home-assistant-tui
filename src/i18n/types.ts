@@ -160,6 +160,12 @@ export interface Locale {
     readonly settingsTitle: string;
   };
 
+  testView: {
+    readonly description: string;
+    readonly heading: string;
+    readonly title: string;
+  };
+
   status: {
     ago: {
       readonly hours: (h: number) => string;

@@ -13,6 +13,7 @@ import { SubmenuView } from "./SubmenuView.js";
 import { DashboardView } from "./DashboardView.js";
 import { EntitiesView } from "./EntitiesView.js";
 import { AreaEntitiesView } from "./AreaEntitiesView.js";
+import { TestView } from "./TestView.js";
 import { VariantPopup } from "./VariantPopup.js";
 import { ConnectionForm } from "./ConnectionForm.js";
 import type { ConnectionFormValues } from "./ConnectionForm.js";
@@ -36,6 +37,8 @@ interface ChildViewOptions {
 export interface AppOptions {
   /** Which view to start on (default: "main") */
   readonly initialView?: ViewId;
+  /** When true, the initial view is the root — back navigation exits instead of returning to main */
+  readonly standalone?: boolean;
   /** If set, execute this menu item immediately on startup and pre-select it */
   readonly executeItemId?: string;
   /** Title displayed at the top of the main menu */
@@ -79,6 +82,7 @@ export class App {
   private dashboardView: DashboardView;
   private entitiesView: EntitiesView;
   private areaEntitiesView: AreaEntitiesView;
+  private testView: TestView;
   private variantPopup: VariantPopup;
   private connectionForm: ConnectionForm;
   private activeView: ViewId = "main";
@@ -165,6 +169,21 @@ export class App {
       },
     );
 
+    this.testView = new TestView(deps.renderer, deps.theme, deps.strings, {
+      onBack: () => {
+        if (this.viewStack.length > 0) {
+          this.popView();
+        } else {
+          this.renderer.destroy();
+        }
+      },
+      rootTitle: "⌂",
+      onTitleChange: (parts) => {
+        const suffix = parts.slice(1).join(" \u203A ");
+        setTerminalTitle(`${this.appTitle} \u203A ${suffix}`);
+      },
+    });
+
     this.variantPopup = new VariantPopup(
       deps.renderer,
       deps.theme,
@@ -206,6 +225,7 @@ export class App {
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
     this.areaEntitiesView.setVisible(false);
+    this.testView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     // --- Global keyboard ---
@@ -219,12 +239,17 @@ export class App {
         this.connectionForm.handleKeyPress(key);
         return;
       }
+
+      if (this.activeView === "test") {
+        this.testView.handleKeyPress(key);
+        return;
+      }
     });
 
     // --- Determine initial view ---
     const startView = options.initialView ?? "main";
 
-    if (startView !== "main") {
+    if (startView !== "main" && !options.standalone) {
       this.viewStack.push("main");
     }
 
@@ -263,6 +288,7 @@ export class App {
     this.dashboardView.updateConnectionInfo(info);
     this.entitiesView.updateConnectionInfo(info);
     this.areaEntitiesView.updateConnectionInfo(info);
+    this.testView.updateConnectionInfo(info);
   }
 
   /** Provide or clear the active WebSocket connection for views that need it. */
@@ -313,6 +339,7 @@ export class App {
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
     this.areaEntitiesView.setVisible(false);
+    this.testView.setVisible(false);
     this.connectionForm.setVisible(false);
 
     this.activeView = viewId;
@@ -338,6 +365,10 @@ export class App {
       case "areaEntities":
         this.areaEntitiesView.setVisible(true);
         this.areaEntitiesView.resetAndFocus();
+        break;
+      case "test":
+        this.testView.setVisible(true);
+        this.testView.resetAndFocus();
         break;
       case "setup":
         setTerminalTitle(
@@ -424,6 +455,9 @@ export class App {
       case "areaEntities":
         this.areaEntitiesView.focus();
         break;
+      case "test":
+        this.testView.focus();
+        break;
       case "setup":
         this.connectionForm.focus();
         break;
@@ -446,6 +480,9 @@ export class App {
         break;
       case "areaEntities":
         this.areaEntitiesView.blur();
+        break;
+      case "test":
+        this.testView.blur();
         break;
       case "setup":
         this.connectionForm.blur();

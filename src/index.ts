@@ -11,6 +11,7 @@ import { loadConfig, saveConfig, isConfigured } from "./config.js";
 import { Strings } from "./i18n/index.js";
 import { en } from "./i18n/en.js";
 import { runTestConnection } from "./cmd/testConnection.js";
+import { runTestView } from "./cmd/testView.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 
@@ -31,6 +32,15 @@ if (flags.subcommand === "test-connection") {
     process.exit(0);
   });
   Effect.runPromise(runTestConnection).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else if (flags.subcommand === "test-view") {
+  process.on("SIGINT", () => {
+    process.stdout.write("\n");
+    process.exit(0);
+  });
+  Effect.runPromise(runTestView).catch((err) => {
     console.error(err);
     process.exit(1);
   });
