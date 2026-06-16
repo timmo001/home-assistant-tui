@@ -13,6 +13,7 @@ import { SubmenuView } from "./SubmenuView.js";
 import { DashboardView } from "./DashboardView.js";
 import { EntitiesView } from "./EntitiesView.js";
 import { AreaEntitiesView } from "./AreaEntitiesView.js";
+import { TodoView } from "./TodoView.js";
 import { TestView } from "./TestView.js";
 import { VariantPopup } from "./VariantPopup.js";
 import { ConnectionForm } from "./ConnectionForm.js";
@@ -45,6 +46,8 @@ export interface AppOptions {
   readonly title?: string;
   /** Pre-fill the connection form with these values (Settings > Connection re-edit flow) */
   readonly initialConnectionValues?: Partial<ConnectionFormValues>;
+  /** Initial todo entity ID for direct todo launches */
+  readonly initialTodoEntityId?: string;
 }
 
 /** Dependencies injected into the App at construction time */
@@ -82,6 +85,7 @@ export class App {
   private dashboardView: DashboardView;
   private entitiesView: EntitiesView;
   private areaEntitiesView: AreaEntitiesView;
+  private todoView: TodoView;
   private testView: TestView;
   private variantPopup: VariantPopup;
   private connectionForm: ConnectionForm;
@@ -169,6 +173,14 @@ export class App {
       },
     );
 
+    this.todoView = new TodoView(
+      deps.renderer,
+      deps.theme,
+      deps.strings,
+      childViewOpts,
+    );
+    this.todoView.setEntityId(options.initialTodoEntityId ?? null);
+
     this.testView = new TestView(deps.renderer, deps.theme, deps.strings, {
       onBack: () => {
         if (this.viewStack.length > 0) {
@@ -225,6 +237,7 @@ export class App {
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
     this.areaEntitiesView.setVisible(false);
+    this.todoView.setVisible(false);
     this.testView.setVisible(false);
     this.connectionForm.setVisible(false);
 
@@ -247,6 +260,11 @@ export class App {
 
       if (this.activeView === "dashboard") {
         this.dashboardView.handleKeyPress(key);
+        return;
+      }
+
+      if (this.activeView === "todo" && this.todoView.hasPopup) {
+        this.todoView.handleKeyPress(key);
         return;
       }
     });
@@ -294,6 +312,7 @@ export class App {
     this.dashboardView.updateConnectionInfo(info);
     this.entitiesView.updateConnectionInfo(info);
     this.areaEntitiesView.updateConnectionInfo(info);
+    this.todoView.updateConnectionInfo(info);
     this.testView.updateConnectionInfo(info);
   }
 
@@ -302,6 +321,7 @@ export class App {
     this.currentConnection = conn;
     this.dashboardView.setConnection(conn);
     this.entitiesView.setConnection(conn);
+    this.todoView.setConnection(conn);
     // AreaEntitiesView gets connection lazily via onAreaSelect
     if (conn) {
       this.areaEntitiesView.setConnection(conn);
@@ -345,6 +365,7 @@ export class App {
     this.dashboardView.setVisible(false);
     this.entitiesView.setVisible(false);
     this.areaEntitiesView.setVisible(false);
+    this.todoView.setVisible(false);
     this.testView.setVisible(false);
     this.connectionForm.setVisible(false);
 
@@ -371,6 +392,10 @@ export class App {
       case "areaEntities":
         this.areaEntitiesView.setVisible(true);
         this.areaEntitiesView.resetAndFocus();
+        break;
+      case "todo":
+        this.todoView.setVisible(true);
+        this.todoView.resetAndFocus();
         break;
       case "test":
         this.testView.setVisible(true);
@@ -425,6 +450,9 @@ export class App {
         break;
 
       case "view":
+        if (action.viewId === "todo") {
+          this.todoView.setEntityId(action.entityId ?? null);
+        }
         this.pushView(action.viewId);
         break;
 
@@ -461,6 +489,9 @@ export class App {
       case "areaEntities":
         this.areaEntitiesView.focus();
         break;
+      case "todo":
+        this.todoView.focus();
+        break;
       case "test":
         this.testView.focus();
         break;
@@ -486,6 +517,9 @@ export class App {
         break;
       case "areaEntities":
         this.areaEntitiesView.blur();
+        break;
+      case "todo":
+        this.todoView.blur();
         break;
       case "test":
         this.testView.blur();

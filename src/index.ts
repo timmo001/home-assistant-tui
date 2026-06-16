@@ -12,6 +12,7 @@ import { Strings } from "./i18n/index.js";
 import { en } from "./i18n/en.js";
 import { runTestConnection } from "./cmd/testConnection.js";
 import { runTestView } from "./cmd/testView.js";
+import type { ViewId } from "./types.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 
@@ -56,6 +57,8 @@ if (flags.subcommand === "test-connection") {
 
       // Resolve subcommand to determine startup behaviour
       let executeItemId: string | undefined;
+      let requestedInitialView: ViewId | undefined;
+      let initialTodoEntityId: string | undefined;
 
       if (flags.subcommand) {
         const resolved = resolveSubcommand(flags.subcommand, menu);
@@ -75,6 +78,11 @@ if (flags.subcommand === "test-connection") {
             action.type === "submenu"
           ) {
             executeItemId = resolved.itemId;
+          } else if (action.type === "view") {
+            requestedInitialView = action.viewId;
+            if (action.viewId === "todo") {
+              initialTodoEntityId = flags.rest[0];
+            }
           }
         }
       }
@@ -93,7 +101,9 @@ if (flags.subcommand === "test-connection") {
       const toast = new Toast(renderer, theme);
       const config = yield* loadConfig;
       const configured = yield* isConfigured;
-      const initialView = configured ? "main" : "setup";
+      const initialView = configured
+        ? (requestedInitialView ?? "main")
+        : "setup";
       log(
         `Config ${configured ? "found" : "not found"} — starting on ${initialView}`,
       );
@@ -117,6 +127,7 @@ if (flags.subcommand === "test-connection") {
             executeItemId,
             initialView,
             initialConnectionValues: config.homeassistant,
+            initialTodoEntityId,
           },
           // onConnectionSaved — called when user saves the connection form
           async (values) => {

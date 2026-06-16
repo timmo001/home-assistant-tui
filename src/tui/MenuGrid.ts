@@ -240,7 +240,9 @@ export class MenuGrid {
 
   private moveInDirection(direction: MoveDirection): void {
     const layouts = this.getTileLayouts();
-    const current = layouts.find((layout) => layout.id === this.getSelectedId());
+    const current = layouts.find(
+      (layout) => layout.id === this.getSelectedId(),
+    );
     if (!current) return;
 
     let best: TileLayout | undefined;
@@ -289,7 +291,11 @@ export class MenuGrid {
     this.scroll.updateFromLayout();
 
     const layouts: Array<TileLayout> = [];
-    for (let sectionIndex = 0; sectionIndex < this.sections.length; sectionIndex++) {
+    for (
+      let sectionIndex = 0;
+      sectionIndex < this.sections.length;
+      sectionIndex++
+    ) {
       const section = this.sections[sectionIndex];
       for (let tileIndex = 0; tileIndex < section.items.length; tileIndex++) {
         const id = section.items[tileIndex].id;

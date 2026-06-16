@@ -63,6 +63,16 @@ export function buildMenu(locale: Locale): MenuRegistry {
     ),
 
     item(
+      "todo",
+      "󰄬",
+      locale.menu.todo.title,
+      locale.menu.todo.description,
+      { type: "view", viewId: "todo" },
+      undefined,
+      ["tasks", "todo list", "shopping", "checklist", ":todo"],
+    ),
+
+    item(
       "settings",
       "󰒓",
       locale.menu.settings.title,

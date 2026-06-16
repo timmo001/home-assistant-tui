@@ -18,7 +18,11 @@ import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import { globalHelp, type HelpEntry } from "./helpBar.js";
 import { MenuList } from "./MenuList.js";
-import { MenuGrid, type MenuGridItem, type MenuGridSection } from "./MenuGrid.js";
+import {
+  MenuGrid,
+  type MenuGridItem,
+  type MenuGridSection,
+} from "./MenuGrid.js";
 import { ConnectedView, type ConnectedViewOptions } from "./ConnectedView.js";
 import { EntityActionHandler } from "./entityActions.js";
 import {

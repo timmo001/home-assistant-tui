@@ -94,6 +94,8 @@ against the menu registry:
   home-assistant-tui settings             Open the settings submenu
   home-assistant-tui settings connection  Open connection settings
   home-assistant-tui dashboard            Open the dashboard
+  home-assistant-tui todo                 Open todo lists
+  home-assistant-tui todo todo.my_list    Open a todo list directly
   home-assistant-tui test-view            Open the TUI sandbox view
 
 Options:

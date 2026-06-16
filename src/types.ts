@@ -30,6 +30,7 @@ export type ViewId =
   | "dashboard"
   | "entities"
   | "areaEntities"
+  | "todo"
   | "test";
 
 /** Action that suspends the TUI and runs a command with inherited stdio */
@@ -70,6 +71,7 @@ export type ToastVariant = "info" | "success" | "error";
 export interface ViewAction {
   readonly type: "view";
   readonly viewId: ViewId;
+  readonly entityId?: string;
 }
 
 /** Action that opens a nested submenu */

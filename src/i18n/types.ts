@@ -68,6 +68,46 @@ export interface Locale {
     };
   };
 
+  todo: {
+    readonly actionFailed: (error: string) => string;
+    readonly addItem: string;
+    readonly completedHidden: string;
+    readonly completedPrefix: string;
+    readonly completedVisible: string;
+    readonly confirmDelete: (summary: string) => string;
+    readonly created: string;
+    readonly deleted: string;
+    readonly deleteItem: string;
+    readonly descriptionLabel: string;
+    readonly descriptionPlaceholder: string;
+    readonly due: (due: string) => string;
+    readonly editItem: string;
+    readonly emptyActive: string;
+    readonly emptyAll: string;
+    readonly emptyFiltered: string;
+    readonly emptyLists: string;
+    readonly entityNotFound: (entityId: string) => string;
+    readonly help: {
+      readonly add: string;
+      readonly completed: string;
+      readonly delete: string;
+      readonly edit: string;
+      readonly mark: string;
+      readonly openWeb: string;
+    };
+    readonly loadingItems: string;
+    readonly loadingLists: string;
+    readonly loadFailed: (error: string) => string;
+    readonly noDescription: string;
+    readonly pickList: string;
+    readonly requiredFields: string;
+    readonly taskNameLabel: string;
+    readonly totalCount: (n: number) => string;
+    readonly unsupported: string;
+    readonly updated: string;
+    readonly openedWeb: string;
+  };
+
   areaEntities: {
     readonly loading: string;
     readonly empty: string;
@@ -156,6 +196,7 @@ export interface Locale {
       readonly title: string;
     };
     readonly entities: { readonly description: string; readonly title: string };
+    readonly todo: { readonly description: string; readonly title: string };
     readonly quit: { readonly description: string; readonly title: string };
     readonly settings: { readonly description: string; readonly title: string };
     /** Display title for the settings submenu breadcrumb */

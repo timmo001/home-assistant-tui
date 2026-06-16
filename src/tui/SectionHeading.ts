@@ -30,7 +30,11 @@ export class SectionHeading {
   private iconText: TextRenderable | null = null;
   private titleText: TextRenderable;
 
-  constructor(renderer: CliRenderer, theme: Theme, options: SectionHeadingOptions) {
+  constructor(
+    renderer: CliRenderer,
+    theme: Theme,
+    options: SectionHeadingOptions,
+  ) {
     this.theme = theme;
 
     this.root = new BoxRenderable(renderer, {

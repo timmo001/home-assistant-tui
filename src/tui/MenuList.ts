@@ -78,6 +78,8 @@ export interface MenuListOptions {
    * Return `true` to indicate the key was consumed.
    */
   readonly onKeyPress?: (key: KeyEvent) => boolean;
+  /** When set to "slash", printable keys only filter after pressing /. */
+  readonly filterActivation?: "type" | "slash";
 }
 
 /**
@@ -111,8 +113,10 @@ export class MenuList extends ScrollBoxRenderable {
   private readonly _renderer: CliRenderer;
   private readonly _theme: Theme;
   private readonly _externalFilter: boolean;
+  private readonly _filterActivation: "type" | "slash";
 
   private _filterText = "";
+  private _filterActive = false;
   private _fuse: Fuse<MenuItem>;
 
   // Pagination state
@@ -146,6 +150,7 @@ export class MenuList extends ScrollBoxRenderable {
     this._onPageChange = options.onPageChange;
     this._onKeyPress = options.onKeyPress;
     this._externalFilter = options.externalFilter ?? false;
+    this._filterActivation = options.filterActivation ?? "type";
 
     this._fuse = this._createFuse(options.items);
     this._buildRows();
@@ -157,6 +162,7 @@ export class MenuList extends ScrollBoxRenderable {
     this._allItems = items;
     this._items = items;
     this._filterText = "";
+    this._filterActive = false;
     this._currentPage = 0;
     this._fuse = this._createFuse(items);
     this._selectedIndex = 0;
@@ -329,6 +335,7 @@ export class MenuList extends ScrollBoxRenderable {
   resetFilter(): void {
     if (this._filterText.length === 0) return;
     this._filterText = "";
+    this._filterActive = false;
     this._currentPage = 0;
     this._applyFilter();
   }
@@ -423,10 +430,54 @@ export class MenuList extends ScrollBoxRenderable {
     return this._filterText.length > 0;
   }
 
+  get filterActive(): boolean {
+    return this._filterActive;
+  }
+
   // -- Keyboard handling ------------------------------------------------
 
   handleKeyPress(key: KeyEvent): boolean {
-    // Give the consumer a chance to handle the key first
+    if (this._filterActivation === "slash") {
+      if (this._filterActive) {
+        if (key.name === "escape" || key.name === "return") {
+          this._filterActive = false;
+          this._onFilterChange?.(this._filterText);
+          return true;
+        }
+
+        if (key.name === "backspace") {
+          if (this._filterText.length > 0) {
+            this._filterText = this._filterText.slice(0, -1);
+            this._currentPage = 0;
+            this._applyFilter();
+          } else {
+            this._filterActive = false;
+            this._onFilterChange?.(this._filterText);
+          }
+          return true;
+        }
+
+        if (
+          key.sequence &&
+          key.sequence.length === 1 &&
+          !key.ctrl &&
+          !key.meta &&
+          key.sequence >= " "
+        ) {
+          this._filterText += key.sequence;
+          this._currentPage = 0;
+          this._applyFilter();
+          return true;
+        }
+      } else if (key.sequence === "/" && !key.ctrl && !key.meta) {
+        this._filterActive = true;
+        this._onFilterChange?.(this._filterText);
+        return true;
+      }
+    }
+
+    // Give the consumer a chance to handle the key first, except while
+    // slash-search is active because search mode owns all keystrokes.
     if (this._onKeyPress?.(key)) return true;
 
     // Escape: clear filter → or fire onEscape callback
@@ -496,7 +547,13 @@ export class MenuList extends ScrollBoxRenderable {
     }
 
     // Printable character → fuzzy filter
-    if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
+    if (
+      this._filterActivation === "type" &&
+      key.sequence &&
+      key.sequence.length === 1 &&
+      !key.ctrl &&
+      !key.meta
+    ) {
       const ch = key.sequence;
       if (ch >= " ") {
         this._filterText += ch;

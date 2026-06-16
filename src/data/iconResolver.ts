@@ -119,11 +119,8 @@ export function resolveMdiIcon(mdiName: string, fallback: string): string {
   return mdiToNerdFont(mdiName) ?? fallback;
 }
 
-export function resolveAreaIcon(
-  area: Pick<AreaRegistryEntry, "icon">,
-): string {
-  const fallback =
-    MDI_CODEPOINTS["texture-box"] ?? DEFAULT_ICON;
+export function resolveAreaIcon(area: Pick<AreaRegistryEntry, "icon">): string {
+  const fallback = MDI_CODEPOINTS["texture-box"] ?? DEFAULT_ICON;
   if (area.icon) {
     return resolveMdiIcon(area.icon, fallback);
   }

@@ -66,8 +66,7 @@ export class EntityActionHandler {
     isEntityItem?: (item: MenuItem) => boolean,
   ): boolean {
     const overrideId = this.ctx.getSelectedEntityId?.();
-    const entityId =
-      overrideId ?? this.ctx.menuList.getSelectedItem()?.id;
+    const entityId = overrideId ?? this.ctx.menuList.getSelectedItem()?.id;
     if (!entityId) return false;
 
     if (!overrideId) {
