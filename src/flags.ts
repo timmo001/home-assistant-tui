@@ -1,5 +1,7 @@
 import type { MenuRegistry } from "./menu.js";
 
+const nativeCommands = new Set(["completions", "test-connection", "test-view"]);
+
 /** Parsed CLI flags */
 export interface Flags {
   /** Resolved subcommand (dot-separated path) matching a menu item ID or submenu */
@@ -12,7 +14,11 @@ export interface Flags {
 
 /** Check whether a candidate string matches any known menu item or submenu */
 function isKnownTarget(candidate: string, menu: MenuRegistry): boolean {
-  return menu.menuItemsById.has(candidate) || menu.submenus.has(candidate);
+  return (
+    nativeCommands.has(candidate) ||
+    menu.menuItemsById.has(candidate) ||
+    menu.submenus.has(candidate)
+  );
 }
 
 /**
@@ -96,6 +102,7 @@ against the menu registry:
   home-assistant-tui dashboard            Open the dashboard
   home-assistant-tui todo                 Open todo lists
   home-assistant-tui todo todo.my_list    Open a todo list directly
+  home-assistant-tui completions zsh      Print shell completions
   home-assistant-tui test-view            Open the TUI sandbox view
 
 Options:

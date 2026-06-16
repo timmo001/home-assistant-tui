@@ -16,6 +16,7 @@ A terminal UI for [Home Assistant](https://www.home-assistant.io/), built with [
 - **First-run setup** with a shared connection form reused by Settings > Connection
 - **Catppuccin Mocha** theme with a `Theme` interface ready for custom loaders
 - **CLI subcommand resolution** with greedy longest-match against the menu registry
+- **Shell completions** for Bash, Fish, and Zsh
 - **`test-connection` subcommand** — diagnose connectivity without launching the TUI
 
 ## Quick start
@@ -53,6 +54,14 @@ bun run gen:icons    # Regenerate MDI→Nerd Font codepoint map
 bun run format       # Format with Prettier
 bun run format:check # Check formatting
 make create_arch     # Build an Arch Linux package in dist/
+```
+
+Generate shell completions with the CLI:
+
+```sh
+home-assistant-tui completions zsh
+home-assistant-tui completions bash
+home-assistant-tui completions fish
 ```
 
 ## Packaging

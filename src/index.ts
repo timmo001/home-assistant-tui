@@ -6,6 +6,11 @@ import { loadTheme } from "./theme.js";
 import { Toast } from "./tui/Toast.js";
 import { App } from "./tui/App.js";
 import { parseFlags, resolveSubcommand, printHelp } from "./flags.js";
+import {
+  parseCompletionShell,
+  printCompletionsHelp,
+  renderCompletions,
+} from "./completions.js";
 import { buildMenu } from "./menu.js";
 import { loadConfig, saveConfig, isConfigured } from "./config.js";
 import { Strings } from "./i18n/index.js";
@@ -22,7 +27,17 @@ const defaultMenu = buildMenu(en);
 const flags = parseFlags(process.argv.slice(2), defaultMenu);
 
 if (flags.help) {
-  printHelp();
+  if (flags.subcommand === "completions") {
+    printCompletionsHelp();
+  } else {
+    printHelp();
+  }
+  process.exit(0);
+}
+
+if (flags.subcommand === "completions") {
+  const shell = parseCompletionShell(flags.rest);
+  process.stdout.write(renderCompletions(shell, defaultMenu));
   process.exit(0);
 }
 
