@@ -102,11 +102,18 @@ against the menu registry:
   home-assistant-tui dashboard            Open the dashboard
   home-assistant-tui todo                 Open todo lists
   home-assistant-tui todo todo.my_list    Open a todo list directly
+  home-assistant-tui todo todo.my_list --bar-json
+                                          Print status-bar JSON for active items
+  home-assistant-tui todo todo.my_list --count
+                                          Print active item count
   home-assistant-tui completions zsh      Print shell completions
   home-assistant-tui test-view            Open the TUI sandbox view
 
 Options:
   --help, -h  Show this help message
+  --bar-json  JSON output for todo status bars
+  --count     Print todo item count
+  --all       Include completed todo items with --bar-json or --count
 
 Examples:
   home-assistant-tui                      Main menu

@@ -17,6 +17,7 @@ import { Strings } from "./i18n/index.js";
 import { en } from "./i18n/en.js";
 import { runTestConnection } from "./cmd/testConnection.js";
 import { runTestView } from "./cmd/testView.js";
+import { hasTodoOutputFlag, runTodoCommand } from "./cmd/todo.js";
 import type { ViewId } from "./types.js";
 
 const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
@@ -58,6 +59,11 @@ if (flags.subcommand === "test-connection") {
   });
   Effect.runPromise(runTestView).catch((err) => {
     console.error(err);
+    process.exit(1);
+  });
+} else if (flags.subcommand === "todo" && hasTodoOutputFlag(flags.rest)) {
+  Effect.runPromise(runTodoCommand(flags.rest)).catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
     process.exit(1);
   });
 } else {

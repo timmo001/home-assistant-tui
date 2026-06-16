@@ -18,6 +18,7 @@ interface CompletionCommand {
 }
 
 const helpOptions = ["-h", "--help"] as const;
+const todoOptions = ["--bar-json", "--count", "--all"] as const;
 const shellValues: readonly CompletionValue[] = SHELLS.map((shell) => ({
   value: shell,
   description: `${shell[0].toUpperCase()}${shell.slice(1)}`,
@@ -110,6 +111,7 @@ function renderBashCompletions(menu: MenuRegistry): string {
     ...commands.map((command) => command.name),
     ...helpOptions,
   ];
+  const todoOptionWords = [...helpOptions, ...todoOptions].join(" ");
   const branches = commands.flatMap((command) => {
     const words =
       command.children?.map((child) => child.name) ??
@@ -136,6 +138,10 @@ function renderBashCompletions(menu: MenuRegistry): string {
     "  cword=$COMP_CWORD",
     "",
     "  if [[ $cur == -* ]]; then",
+    "    if [[ ${COMP_WORDS[1]-} == todo ]]; then",
+    `      COMPREPLY=( $(compgen -W ${bashQuote(todoOptionWords)} -- "$cur") )`,
+    "      return",
+    "    fi",
     `    COMPREPLY=( $(compgen -W ${bashQuote(helpOptions.join(" "))} -- "$cur") )`,
     "    return",
     "  fi",
@@ -162,6 +168,9 @@ function renderFishCompletions(menu: MenuRegistry): string {
     "",
     "complete -c home-assistant-tui -f",
     "complete -c home-assistant-tui -s h -l help -d 'Show help message'",
+    "complete -c home-assistant-tui -n '__fish_seen_subcommand_from todo' -l bar-json -d 'Print todo status-bar JSON'",
+    "complete -c home-assistant-tui -n '__fish_seen_subcommand_from todo' -l count -d 'Print todo item count'",
+    "complete -c home-assistant-tui -n '__fish_seen_subcommand_from todo' -l all -d 'Include completed todo items'",
   ];
 
   for (const command of commands) {
@@ -188,6 +197,11 @@ function renderFishCompletions(menu: MenuRegistry): string {
 
 function renderZshCompletions(menu: MenuRegistry): string {
   const commands = completionCommands(menu);
+  const todoOptionEntries = valueEntries([
+    { value: "--bar-json", description: "Print todo status-bar JSON" },
+    { value: "--count", description: "Print todo item count" },
+    { value: "--all", description: "Include completed todo items" },
+  ]);
   const branchArrays = commands.flatMap((command) => {
     const entries = command.children
       ? commandEntries(command.children)
@@ -227,7 +241,17 @@ function renderZshCompletions(menu: MenuRegistry): string {
     ...commandEntries(commands).map((entry) => `  ${zshQuote(entry)}`),
     ")",
     "",
+    "local -a _home_assistant_tui_todo_options",
+    "_home_assistant_tui_todo_options=(",
+    ...todoOptionEntries.map((entry) => `  ${zshQuote(entry)}`),
+    ")",
+    "",
     ...branchArrays,
+    "if (( CURRENT > 2 )) && [[ ${words[2]} == todo && ${words[CURRENT]} == --* ]]; then",
+    "  _describe -t options 'todo option' _home_assistant_tui_todo_options",
+    "  return",
+    "fi",
+    "",
     "if (( CURRENT > 2 )) && [[ ${words[CURRENT]} != -* ]]; then",
     "  case ${words[2]} in",
     ...branchCases,

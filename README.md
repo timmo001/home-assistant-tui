@@ -18,6 +18,7 @@ A terminal UI for [Home Assistant](https://www.home-assistant.io/), built with [
 - **CLI subcommand resolution** with greedy longest-match against the menu registry
 - **Shell completions** for Bash, Fish, and Zsh
 - **`test-connection` subcommand** — diagnose connectivity without launching the TUI
+- **Todo status output** — `home-assistant-tui todo <entity> --bar-json` or `--count` for status bars and dashboards
 
 ## Quick start
 
@@ -62,6 +63,14 @@ Generate shell completions with the CLI:
 home-assistant-tui completions zsh
 home-assistant-tui completions bash
 home-assistant-tui completions fish
+```
+
+Todo lists can also emit non-interactive output:
+
+```sh
+home-assistant-tui todo todo.my_tasks --count
+home-assistant-tui todo todo.my_tasks --bar-json
+home-assistant-tui todo todo.my_tasks --bar-json --all
 ```
 
 ## Packaging
