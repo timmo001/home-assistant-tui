@@ -4,5 +4,39 @@
     "external_directory": {
       "~/repos/home-assistant/**": "allow"
     }
+  },
+  "references": {
+    "core": {
+      "path": "../core",
+      "description": "Home Assistant Core backend (Python): integrations, entity models, and the WebSocket and REST APIs the frontend calls"
+    },
+    "frontend": {
+      "path": "../frontend",
+      "description": "Home Assistant frontend (Lit and TypeScript web components)"
+    },
+    "docs": {
+      "path": "../home-assistant.io",
+      "description": "Home Assistant user documentation (home-assistant.io source)"
+    },
+    "dev-docs": {
+      "path": "../developers.home-assistant",
+      "description": "Home Assistant developer documentation, including frontend architecture and the data model"
+    },
+    "brands": {
+      "path": "../brands",
+      "description": "Home Assistant brand icons and logos"
+    },
+    "supervisor": {
+      "path": "../supervisor",
+      "description": "Home Assistant Supervisor: add-on and OS management backend"
+    },
+    "cli": {
+      "path": "../cli",
+      "description": "Home Assistant CLI"
+    },
+    "android": {
+      "path": "../android",
+      "description": "Home Assistant Android app source"
+    }
   }
 }
