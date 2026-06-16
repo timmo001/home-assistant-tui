@@ -425,23 +425,6 @@ export class TodoView extends ConnectedView {
   }
 
   private handleBack(): void {
-    if (this.selectedEntityId && !this.requestedEntityId) {
-      this.selectedEntityId = null;
-      this.selectedListName = "";
-      this.allItems = [];
-      if (this.unsubItems) {
-        void this.unsubItems();
-        this.unsubItems = null;
-      }
-      this.titleParts = [
-        this.callbacks.rootTitle ?? this.strings.app.name,
-        this.strings.menu.todo.title,
-      ];
-      this.header.update(this.currentInfo, this.titleParts);
-      this.callbacks.onTitleChange?.(this.titleParts);
-      this.handleEntityStatesChanged();
-      return;
-    }
     this.callbacks.onBack();
   }
 
