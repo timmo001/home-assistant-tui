@@ -130,7 +130,7 @@ if (flags.subcommand === "test-connection") {
       );
 
       // Run the app with services provided via layers
-      yield* Effect.gen(function* () {
+      return yield* Effect.gen(function* () {
         const ha = yield* HomeAssistantService;
         const cr = yield* CommandRunner;
 
@@ -181,7 +181,7 @@ if (flags.subcommand === "test-connection") {
         renderer.start();
         log("Renderer started — TUI is live");
 
-        yield* Effect.never;
+        return yield* Effect.never;
       }).pipe(
         Effect.provide(
           Layer.merge(

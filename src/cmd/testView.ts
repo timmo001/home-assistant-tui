@@ -39,7 +39,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
     const config = yield* loadConfig;
     const configured = yield* isConfigured;
 
-    yield* Effect.gen(function* () {
+    return yield* Effect.gen(function* () {
       const ha = yield* HomeAssistantService;
       const cr = yield* CommandRunner;
 
@@ -75,7 +75,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
       renderer.start();
       log("Test view is live");
 
-      yield* Effect.never;
+      return yield* Effect.never;
     }).pipe(
       Effect.provide(
         Layer.merge(
