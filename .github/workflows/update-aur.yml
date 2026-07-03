@@ -1,5 +1,7 @@
+---
 name: Update AUR Package
 
+# yamllint disable-line rule:truthy
 on:
   push:
     branches:
@@ -12,7 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/timmo001/system-bridge/ci-build-arch:latest
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: >-
+      ${{ github.ref == 'refs/heads/main'
+      && (github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch') }}
 
     steps:
       - name: Checkout repository
@@ -45,7 +50,9 @@ jobs:
           if [ "$(id -u)" -eq 0 ] && id -u builduser >/dev/null 2>&1; then
             echo "Running as root, switching to builduser..."
             chown -R builduser:builduser "$(pwd)"
-            exec sudo --preserve-env=CI,AUR_SSH_PRIVATE_KEY,GITHUB_SHA,GITHUB_WORKSPACE -u builduser -H bash ./.scripts/linux/update-aur.sh
+            exec sudo \
+            --preserve-env=CI,AUR_SSH_PRIVATE_KEY,GITHUB_SHA,GITHUB_WORKSPACE \
+            -u builduser -H bash ./.scripts/linux/update-aur.sh
           fi
 
           .scripts/linux/update-aur.sh
