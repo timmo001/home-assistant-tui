@@ -8,12 +8,13 @@ on:
       - main
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 jobs:
-  update-aur:
-    name: Update AUR (home-assistant-tui-git)
+  prepare-aur:
+    name: Prepare AUR package (home-assistant-tui-git)
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/timmo001/system-bridge/ci-build-arch:latest
     if: >-
       ${{ github.ref == 'refs/heads/main'
       && (github.event_name == 'push'
@@ -31,28 +32,37 @@ jobs:
       - name: Test build
         run: |
           echo "Testing build to ensure it compiles..."
-
-          # Fix git ownership for VCS stamping in container
-          git config --global --add safe.directory "$(pwd)"
-
           bun install --frozen-lockfile
           bun run build
 
-      - name: Update AUR package
-        env:
-          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-        run: |
-          chmod +x .scripts/linux/update-aur.sh
+      - name: Prepare AUR package files
+        run: .scripts/linux/prepare-aur.sh "${{ runner.temp }}/aur-package"
 
-          # If running as root and builduser exists, switch to builduser
-          if [ "$(id -u)" -eq 0 ] && id -u builduser >/dev/null 2>&1; then
-            echo "Running as root, switching to builduser..."
-            chown -R builduser:builduser "$(pwd)"
-            exec sudo \
-            --preserve-env=CI,AUR_SSH_PRIVATE_KEY,GITHUB_SHA,GITHUB_WORKSPACE \
-            -u builduser -H bash ./.scripts/linux/update-aur.sh
-          fi
+      - name: Upload AUR package files
+        uses: >-  # v7
+          actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: >-
+            ha-tui-aur-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/aur-package
+          if-no-files-found: error
+          retention-days: 1
 
-          .scripts/linux/update-aur.sh
+  update-aur:
+    name: Update AUR (home-assistant-tui-git)
+    needs: prepare-aur
+    if: >-
+      ${{ github.ref == 'refs/heads/main'
+      && (github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch') }}
+    permissions:
+      contents: read
+    uses: >-  # master
+      timmo001/workflows/.github/workflows/publish-aur.yml@b1d37bf9247fadf3209395cd6bdcbd55c9989370
+    with:
+      package-name: home-assistant-tui-git
+      artifact-name: >-
+        ha-tui-aur-${{ github.run_id }}-${{ github.run_attempt }}
+      pkgbuild-path: PKGBUILD
+    secrets:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

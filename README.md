@@ -79,7 +79,7 @@ This repo includes the same maintenance pieces used in `go-automate`, adapted fo
 
 - `Makefile` targets for local CI and packaging
 - `.github/workflows/ci.yml` for build verification on PRs and `main`
-- `.github/workflows/update-aur.yml` for publishing `home-assistant-tui-git`
+- `.github/workflows/update-aur.yml` for preparing `home-assistant-tui-git` and publishing it through the shared AUR workflow
 - `.scripts/linux/` Arch packaging helpers for both source and prebuilt-binary packages
 
 ## Configuration
