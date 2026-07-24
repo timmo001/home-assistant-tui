@@ -1,0 +1,33 @@
+---
+name: home-assistant-tui
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+version_schema: none
+release: "1"
+section: utils
+priority: optional
+maintainer: Aidan Timson <aidan@timmo.dev>
+description: Terminal UI for Home Assistant
+homepage: https://github.com/timmo001/home-assistant-tui
+license: Apache-2.0
+overrides:
+  deb:
+    depends:
+      - libc6
+  rpm:
+    depends:
+      - glibc
+contents:
+  - src: dist/release/root/home-assistant-tui
+    dst: /usr/bin/home-assistant-tui
+    file_info:
+      mode: 0755
+  - src: .scripts/linux/completions/home-assistant-tui.bash
+    dst: /usr/share/bash-completion/completions/home-assistant-tui
+  - src: .scripts/linux/completions/home-assistant-tui.fish
+    dst: /usr/share/fish/vendor_completions.d/home-assistant-tui.fish
+  - src: .scripts/linux/completions/_home-assistant-tui
+    dst: /usr/share/zsh/site-functions/_home-assistant-tui
+  - src: LICENSE
+    dst: /usr/share/licenses/home-assistant-tui/LICENSE

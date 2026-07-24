@@ -75,12 +75,15 @@ home-assistant-tui todo todo.my_tasks --bar-json --all
 
 ## Packaging
 
-This repo includes the same maintenance pieces used in `go-automate`, adapted for a Bun-only project:
+This repo publishes rolling and stable Linux packages:
 
 - `Makefile` targets for local CI and packaging
 - `.github/workflows/ci.yml` for build verification on PRs and `main`
-- `.github/workflows/update-aur.yml` for preparing `home-assistant-tui-git` and publishing it through the shared AUR workflow
+- `.github/workflows/publish-aur-git.yml` for publishing `home-assistant-tui-git` after relevant changes to `main`
+- `.github/workflows/release.yml` for adding x86_64 and aarch64 archives, deb and RPM packages, and checksums to stable releases before publishing `home-assistant-tui-bin`
 - `.scripts/linux/` Arch packaging helpers for both source and prebuilt-binary packages
+
+Stable tags and GitHub Releases are created manually. Publishing a non-prerelease Release packages its existing tag; the workflow can also replay an existing stable tag manually.
 
 ## Configuration
 
