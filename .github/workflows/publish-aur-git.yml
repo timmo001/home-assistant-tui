@@ -1,0 +1,63 @@
+---
+name: Publish AUR git package
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - package.json
+      - bun.lock
+      - LICENSE
+      - .scripts/linux/PKGBUILD
+      - .scripts/linux/prepare-aur.sh
+      - .github/workflows/publish-aur-git.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-aur-git-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare AUR package (home-assistant-tui-git)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: >- # v7
+          actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare home-assistant-tui-git
+        run: .scripts/linux/prepare-aur.sh "${{ runner.temp }}/aur-package"
+      - name: Upload home-assistant-tui-git
+        uses: >- # v7
+          actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: >-
+            aur-home-assistant-tui-git-${{
+              github.run_id
+            }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/aur-package
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish AUR (home-assistant-tui-git)
+    needs: prepare
+    uses: >- # master
+      timmo001/workflows/.github/workflows/publish-aur.yml@a4091353aaeb94959d5d667f11adc12e2f76ce04
+    with:
+      package-name: home-assistant-tui-git
+      artifact-name: >-
+        aur-home-assistant-tui-git-${{
+          github.run_id
+        }}-${{ github.run_attempt }}
+    secrets:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
