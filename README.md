@@ -23,14 +23,13 @@ A terminal UI for [Home Assistant](https://www.home-assistant.io/), built with [
 ## Quick start
 
 ```sh
-bun install
-bun run dev
+mise run dev
 ```
 
 For the same checks used in CI:
 
 ```sh
-make ci
+mise run check
 ```
 
 On first launch, a setup form prompts for your Home Assistant URL and a [long-lived access token](https://www.home-assistant.io/docs/authentication/#your-account-profile). Config is saved to `~/.local/share/home-assistant-tui/config.yml`.
@@ -40,21 +39,24 @@ On first launch, a setup form prompts for your Home Assistant URL and a [long-li
 Compile to a standalone binary:
 
 ```sh
-bun run build
+mise run build
 # outputs: dist/home-assistant-tui
 ```
 
 ## Commands
 
 ```sh
-bun run dev          # Run with --watch for development
-bun run build        # Compile to standalone binary at dist/home-assistant-tui
-bun run typecheck    # Typecheck with tsc
-bun run ci           # Format check, typecheck, and build
-bun run gen:icons    # Regenerate MDI→Nerd Font codepoint map
-bun run format       # Format with Prettier
-bun run format:check # Check formatting
-make create_arch     # Build an Arch Linux package in dist/
+mise run dev          # Run with --watch for development
+mise run serve:start  # Run in a background Terminal Control session
+mise run serve:show   # Show the visible background TUI screen
+mise run serve:stop   # Stop the background TUI session
+mise run build        # Compile to standalone binary at dist/home-assistant-tui
+mise run typecheck    # Typecheck with tsc
+mise run check        # Format check, typecheck, and build
+mise run gen:icons    # Regenerate MDI→Nerd Font codepoint map
+mise run format       # Format with Prettier
+mise run format:check # Check formatting
+mise run package:arch # Build an Arch Linux package in dist/
 ```
 
 Generate shell completions with the CLI:
@@ -77,7 +79,7 @@ home-assistant-tui todo todo.my_tasks --bar-json --all
 
 This repo publishes rolling and stable Linux packages:
 
-- `Makefile` targets for local CI and packaging
+- `mise.toml` tasks for local development, CI, and packaging
 - `.github/workflows/ci.yml` for build verification on PRs and `main`
 - `.github/workflows/publish-aur-git.yml` for publishing `home-assistant-tui-git` after relevant changes to `main`
 - `.github/workflows/release.yml` for adding x86_64 and aarch64 archives, deb and RPM packages, and checksums to stable releases before publishing `home-assistant-tui-bin`

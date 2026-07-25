@@ -97,12 +97,21 @@ Debug logging goes to stderr via `console.error` with a prefix: `[ha-tui:App]`, 
 ## Commands
 
 ```sh
-bun run dev          # Run with --watch for development
-bun run build        # Compile to standalone binary at dist/home-assistant-tui
-bun run format       # Format with Prettier
-bun run format:check # Check formatting
-bunx tsc --noEmit    # Typecheck
+mise run dev          # Run with --watch in the foreground
+mise run serve:start  # Run in a background Terminal Control session
+mise run build        # Compile to standalone binary at dist/home-assistant-tui
+mise run format       # Format with Prettier
+mise run format:check # Check formatting
+mise run typecheck    # Typecheck
 ```
+
+## Background TUI
+
+- Prefer `mise run serve:start` over foreground development commands when an agent needs to keep the TUI running.
+- The `serve:*` tasks use the globally installed Terminal Control (`termctrl`) runner because OpenTUI requires a real PTY.
+- Use `mise run serve:status`, `mise run serve:show`, `mise run serve:restart`, and `mise run serve:stop` to manage the session.
+- Use `termctrl send home-assistant-tui ...` to drive keyboard input, then `mise run serve:show` to inspect the settled visible screen. Use `termctrl wait home-assistant-tui "<text>"` instead of sleeps.
+- Do not use `termctrl logs` to infer the visible state of this alternate-screen TUI. Stop the named session after testing unless the user asks to keep it running.
 
 ## Adding a new view
 

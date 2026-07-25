@@ -1,0 +1,94 @@
+min_version = "2025.1.0"
+
+[tools]
+bun = "1.3.14"
+
+[tasks.install]
+description = "Install home-assistant-tui dependencies"
+run = '''
+if [ -n "${CI:-}" ]; then
+  bun install --frozen-lockfile
+else
+  bun install
+fi
+'''
+
+[tasks.dev]
+description = "Run home-assistant-tui in watch mode"
+depends = ["install"]
+run = "bun run dev"
+
+[tasks."serve:start"]
+description = "Start home-assistant-tui in a background terminal session"
+depends = ["install"]
+run = "termctrl start home-assistant-tui -- bun run dev"
+
+[tasks."serve:status"]
+description = "Show background terminal session status"
+run = "termctrl status home-assistant-tui"
+
+[tasks."serve:show"]
+description = "Show the visible home-assistant-tui screen"
+run = "termctrl show home-assistant-tui"
+
+[tasks."serve:restart"]
+description = "Restart the background terminal session"
+run = "termctrl restart home-assistant-tui"
+
+[tasks."serve:stop"]
+description = "Stop the background terminal session"
+run = "termctrl stop home-assistant-tui"
+
+[tasks.build]
+description = "Compile the home-assistant-tui binary"
+depends = ["install"]
+run = "bun run build"
+
+[tasks.typecheck]
+description = "Type-check the home-assistant-tui source"
+depends = ["install"]
+run = "bun run typecheck"
+
+[tasks.test]
+description = "Run the home-assistant-tui type-check"
+depends = ["typecheck"]
+
+[tasks.format]
+description = "Format the home-assistant-tui source"
+depends = ["install"]
+run = "bun run format"
+
+[tasks."format:check"]
+description = "Check formatting without writing"
+depends = ["install"]
+run = "bun run format:check"
+
+[tasks.check]
+description = "Check formatting, types and the production build"
+depends = ["format:check", "typecheck", "build"]
+
+[tasks."gen:icons"]
+description = "Regenerate MDI to Nerd Font codepoint mappings"
+depends = ["install"]
+run = "bun run gen:icons"
+
+[tasks.clean]
+description = "Remove the compiled binary"
+run = "rm -f dist/home-assistant-tui"
+
+[tasks."clean:dist"]
+description = "Remove build and package artefacts"
+run = "rm -rf build dist"
+
+[tasks."package:arch"]
+description = "Create an Arch Linux package"
+depends = ["install"]
+run = '''
+rm -rf build dist
+bun run build
+VERSION="$(git describe --long --tags --abbrev=7 2>/dev/null || printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)")"
+VERSION="$(printf '%s' "$VERSION" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g')"
+export VERSION
+chmod +x ./.scripts/linux/create-arch.sh
+./.scripts/linux/create-arch.sh
+'''
