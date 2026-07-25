@@ -4,7 +4,7 @@ import {
   createSocket,
 } from "home-assistant-js-websocket";
 import type { Connection } from "home-assistant-js-websocket";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { CONFIG_PATH, isConfigured, loadConfig } from "../config.js";
 import { fetchItems, TodoItemStatus, type TodoItem } from "../data/todo.js";
 
@@ -21,6 +21,14 @@ interface BarJson {
   readonly class: string;
 }
 
+class TodoCommandError extends Schema.TaggedErrorClass<TodoCommandError>()(
+  "TodoCommandError",
+  {
+    message: Schema.String,
+    cause: Schema.optionalKey(Schema.Defect()),
+  },
+) {}
+
 const todoOutputFlags = new Set(["--bar-json", "--count", "--all"]);
 
 /** Return whether todo args request non-interactive machine output. */
@@ -31,9 +39,13 @@ export function hasTodoOutputFlag(args: readonly string[]): boolean {
 /** Run a non-interactive todo output command. */
 export const runTodoCommand = (
   args: readonly string[],
-): Effect.Effect<void, Error> =>
+): Effect.Effect<void, TodoCommandError> =>
   Effect.gen(function* () {
-    const options = parseTodoCommandOptions(args);
+    const options = yield* Effect.try({
+      try: () => parseTodoCommandOptions(args),
+      catch: (cause) =>
+        new TodoCommandError({ message: formatError(cause), cause }),
+    });
 
     const result = yield* loadTodoItems(options.entityId).pipe(
       Effect.matchEffect({
@@ -85,13 +97,13 @@ function parseTodoCommandOptions(args: readonly string[]): TodoCommandOptions {
 
 function loadTodoItems(
   entityId: string,
-): Effect.Effect<readonly TodoItem[], Error> {
+): Effect.Effect<readonly TodoItem[], TodoCommandError> {
   return Effect.gen(function* () {
     const configured = yield* isConfigured;
     if (!configured) {
-      return yield* Effect.fail(
-        new Error(`No config found or token is empty at ${CONFIG_PATH}`),
-      );
+      return yield* new TodoCommandError({
+        message: `No config found or token is empty at ${CONFIG_PATH}`,
+      });
     }
 
     const config = yield* loadConfig;
@@ -107,8 +119,8 @@ function loadTodoItems(
           closeConnection(conn);
         }
       },
-      catch: (error) =>
-        error instanceof Error ? error : new Error(String(error)),
+      catch: (cause) =>
+        new TodoCommandError({ message: formatError(cause), cause }),
     });
   });
 }

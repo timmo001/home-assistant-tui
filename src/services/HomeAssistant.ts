@@ -9,7 +9,7 @@ import {
   ERR_CONNECTION_LOST,
 } from "home-assistant-js-websocket";
 import type { Connection } from "home-assistant-js-websocket";
-import { Context, Layer, Effect } from "effect";
+import { Context, Layer, Effect, Schema } from "effect";
 import type { HaTuiConfig } from "../config.js";
 import type { ConnectionInfo, ConnectionStatus } from "../types.js";
 import type { Locale } from "../i18n/index.js";
@@ -27,6 +27,11 @@ export interface HomeAssistantServiceI {
   readonly subscribe: (cb: ConnectionListener) => () => void;
   readonly reconfigure: (config: HaTuiConfig) => Effect.Effect<void>;
 }
+
+class ConnectionAttemptError extends Schema.TaggedErrorClass<ConnectionAttemptError>()(
+  "ConnectionAttemptError",
+  { cause: Schema.Defect() },
+) {}
 
 function makeHomeAssistantService(
   initialConfig: HaTuiConfig,
@@ -92,7 +97,7 @@ function makeHomeAssistantService(
     }
   }
 
-  const connect: Effect.Effect<void> = Effect.promise(async () => {
+  const connect = Effect.gen(function* () {
     if (connecting) {
       log("Connect already in progress — skipping");
       return;
@@ -105,16 +110,19 @@ function makeHomeAssistantService(
       config.homeassistant.token,
     );
 
-    try {
-      connection = await createConnection({ auth, createSocket });
-    } catch (err) {
-      connecting = false;
-      const status = resolveErrorStatus(err);
-      emit({ status, errorMessage: String(err) });
+    const result = yield* Effect.tryPromise({
+      try: () => createConnection({ auth, createSocket }),
+      catch: (cause) => new ConnectionAttemptError({ cause }),
+    }).pipe(Effect.result);
+
+    connecting = false;
+    if (result._tag === "Failure") {
+      const err = result.failure.cause;
+      emit({ status: resolveErrorStatus(err), errorMessage: String(err) });
       return;
     }
 
-    connecting = false;
+    connection = result.success;
 
     // createConnection resolves after auth completes — "ready" has already fired.
     // Call onReady() directly for the initial connect, then keep the listener
@@ -136,9 +144,9 @@ function makeHomeAssistantService(
         errorMessage: strings.commands.reconnectionFailed,
       });
     });
-  });
+  }).pipe(Effect.withSpan("HomeAssistant.connect"));
 
-  const disconnect: Effect.Effect<void> = Effect.sync(() => {
+  const disconnect = Effect.sync(() => {
     if (unsubStateChanges) {
       void unsubStateChanges();
       unsubStateChanges = null;
@@ -146,7 +154,7 @@ function makeHomeAssistantService(
     connection?.close();
     connection = null;
     emit({ status: "disconnected" });
-  });
+  }).pipe(Effect.withSpan("HomeAssistant.disconnect"));
 
   return {
     connect,
@@ -158,13 +166,14 @@ function makeHomeAssistantService(
         listeners.delete(cb);
       };
     },
-    reconfigure: (newConfig) =>
-      Effect.gen(function* () {
-        config = newConfig;
-        yield* disconnect;
-        emit({ url: newConfig.homeassistant.url });
-        yield* connect;
-      }),
+    reconfigure: Effect.fn("HomeAssistant.reconfigure")(function* (
+      newConfig: HaTuiConfig,
+    ) {
+      config = newConfig;
+      yield* disconnect;
+      emit({ url: newConfig.homeassistant.url });
+      yield* connect;
+    }),
   };
 }
 
@@ -178,7 +187,13 @@ export class HomeAssistantService extends Context.Service<
   ): Layer.Layer<HomeAssistantService> {
     return Layer.effect(
       HomeAssistantService,
-      Effect.sync(() => makeHomeAssistantService(config, strings)),
+      Effect.gen(function* () {
+        const service = HomeAssistantService.of(
+          makeHomeAssistantService(config, strings),
+        );
+        yield* Effect.addFinalizer(() => service.disconnect);
+        return service;
+      }),
     );
   }
 }

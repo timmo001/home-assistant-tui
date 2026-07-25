@@ -42,6 +42,9 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
     return yield* Effect.gen(function* () {
       const ha = yield* HomeAssistantService;
       const cr = yield* CommandRunner;
+      const runEffect = Effect.runPromiseWith(
+        yield* Effect.context<HomeAssistantService | CommandRunner>(),
+      );
 
       const app = new App(
         {
@@ -50,6 +53,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
           strings,
           menu,
           commandRunner: cr,
+          runEffect,
           toast,
           baseUrl: config.homeassistant.url,
         },

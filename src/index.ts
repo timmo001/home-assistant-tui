@@ -134,6 +134,9 @@ if (flags.subcommand === "test-connection") {
         const ha = yield* HomeAssistantService;
         const cr = yield* CommandRunner;
 
+        const runEffect = Effect.runPromiseWith(
+          yield* Effect.context<HomeAssistantService | CommandRunner>(),
+        );
         const app = new App(
           {
             renderer,
@@ -141,6 +144,7 @@ if (flags.subcommand === "test-connection") {
             strings,
             menu,
             commandRunner: cr,
+            runEffect,
             toast,
             baseUrl: config.homeassistant.url,
           },
@@ -151,15 +155,13 @@ if (flags.subcommand === "test-connection") {
             initialTodoEntityId,
           },
           // onConnectionSaved — called when user saves the connection form
-          async (values) => {
+          (values) => {
             log(`Saving new config: url=${values.url}`);
             const newConfig = {
               homeassistant: { url: values.url, token: values.token },
             };
-            await Effect.runPromise(
-              saveConfig(newConfig).pipe(
-                Effect.flatMap(() => ha.reconfigure(newConfig)),
-              ),
+            return saveConfig(newConfig).pipe(
+              Effect.flatMap(() => ha.reconfigure(newConfig)),
             );
           },
         );

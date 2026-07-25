@@ -40,7 +40,7 @@ Project instructions for AI coding agents working in this repository.
 
 ### HA service
 
-`src/services/HomeAssistant.ts` — plain class (not an Effect service). Manages the WebSocket connection lifecycle, emits `ConnectionInfo` updates to subscribers via a `subscribe(cb)` / unsubscribe pattern. Calls `getConfig` and `getUser` after connect to populate header metadata.
+`src/services/HomeAssistant.ts` defines a `Context.Service` with a scoped layer. It manages the WebSocket connection lifecycle, emits `ConnectionInfo` updates to subscribers via a `subscribe(cb)` / unsubscribe pattern, and calls `getConfig` and `getUser` after connecting to populate header metadata.
 
 ### Menu system
 
@@ -123,6 +123,6 @@ mise run typecheck    # Typecheck
 
 ## Adding a new service
 
-1. Define the service as a plain class in `src/services/`
-2. Instantiate in `index.ts` and inject dependencies via the `App` constructor or callbacks
-3. Use `Effect.gen` in `index.ts` only for the top-level program wrapper
+1. Define the service with `Context.Service` in `src/services/`
+2. Define its implementation with a `Layer` and use `Effect.fn` for effectful methods
+3. Provide the layer in `index.ts` and inject resolved services into `App`

@@ -6,7 +6,8 @@ import type { ConnectionInfo } from "../types.js";
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import type { MenuRegistry } from "../menu.js";
-import type { CommandRunnerService } from "../services/CommandRunner.js";
+import type { CommandRunner } from "../services/CommandRunner.js";
+import type { ConfigError } from "../config.js";
 import type { Toast } from "./Toast.js";
 import { MainMenu } from "./MainMenu.js";
 import { SubmenuView } from "./SubmenuView.js";
@@ -61,7 +62,9 @@ export interface AppDeps {
   /** Built menu registry */
   readonly menu: MenuRegistry;
   /** Service for running shell commands with suspend/resume */
-  readonly commandRunner: CommandRunnerService;
+  readonly commandRunner: CommandRunner["Service"];
+  /** Runs callback-triggered Effects with the application's service context. */
+  readonly runEffect: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>;
   /** Toast instance for showing notifications */
   readonly toast: Toast;
   /** Base URL for the Home Assistant instance */
@@ -73,12 +76,15 @@ export interface AppDeps {
  * Allows the entry point to persist config and (re)connect.
  * Rejects if save or reconnect fails (form stays open with error feedback).
  */
-export type OnConnectionSaved = (values: ConnectionFormValues) => Promise<void>;
+export type OnConnectionSaved = (
+  values: ConnectionFormValues,
+) => Effect.Effect<void, ConfigError>;
 
 /** Top-level TUI application shell managing a view stack and global keyboard */
 export class App {
   private renderer: CliRenderer;
-  private commandRunner: CommandRunnerService;
+  private commandRunner: CommandRunner["Service"];
+  private runEffect: AppDeps["runEffect"];
   private menu: MenuRegistry;
   private mainMenu: MainMenu;
   private submenuView: SubmenuView;
@@ -103,6 +109,7 @@ export class App {
   ) {
     this.renderer = deps.renderer;
     this.commandRunner = deps.commandRunner;
+    this.runEffect = deps.runEffect;
     this.menu = deps.menu;
     this.strings = deps.strings;
     this.appTitle = options.title ?? deps.strings.app.name;
@@ -220,7 +227,7 @@ export class App {
           log("Connection form submitted — saving config");
           this.connectionValues = values;
           if (onConnectionSaved) {
-            await onConnectionSaved(values);
+            await this.runEffect(onConnectionSaved(values));
           }
           this.popView();
         },
@@ -287,7 +294,7 @@ export class App {
           action.type === "notify"
         ) {
           setTimeout(() => {
-            Effect.runPromise(this.commandRunner.runSuspended(action.cmd, true))
+            this.runEffect(this.commandRunner.runSuspended(action.cmd, true))
               .then(() => deps.renderer.destroy())
               .catch((err: unknown) => {
                 log(`Execute error: ${err}`);
@@ -432,19 +439,19 @@ export class App {
         break;
 
       case "command":
-        Effect.runPromise(
+        this.runEffect(
           this.commandRunner.runSuspended(action.cmd, action.wait),
         ).catch((err: unknown) => log(`Command error: ${err}`));
         break;
 
       case "silent":
-        Effect.runPromise(this.commandRunner.runSilent(action.cmd)).catch(
+        this.runEffect(this.commandRunner.runSilent(action.cmd)).catch(
           (err: unknown) => log(`Silent command error: ${err}`),
         );
         break;
 
       case "notify":
-        Effect.runPromise(
+        this.runEffect(
           this.commandRunner.runNotify(action.cmd, action.notify),
         ).catch((err: unknown) => log(`Notify command error: ${err}`));
         break;

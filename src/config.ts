@@ -1,10 +1,11 @@
 import { parse, stringify } from "yaml";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
-import { Data, Effect } from "effect";
+import { Effect, Schema } from "effect";
 
 const CONFIG_DIR = path.join(
-  process.env.HOME ?? "~",
+  os.homedir(),
   ".local",
   "share",
   "home-assistant-tui",
@@ -21,6 +22,16 @@ export interface HaTuiConfig {
   };
 }
 
+const ConfigFile = Schema.Struct({
+  homeassistant: Schema.optionalKey(
+    Schema.Struct({
+      url: Schema.optionalKey(Schema.String),
+      token: Schema.optionalKey(Schema.String),
+    }),
+  ),
+});
+type ConfigFile = typeof ConfigFile.Type;
+
 const DEFAULT_CONFIG: HaTuiConfig = {
   homeassistant: {
     url: DEFAULT_HA_URL,
@@ -28,28 +39,31 @@ const DEFAULT_CONFIG: HaTuiConfig = {
   },
 };
 
-export class ConfigError extends Data.TaggedError("ConfigError")<{
-  readonly cause: unknown;
-}> {}
+export class ConfigError extends Schema.TaggedErrorClass<ConfigError>()(
+  "ConfigError",
+  {
+    operation: Schema.String,
+    cause: Schema.Defect(),
+  },
+) {}
 
 /** Load config from disk, merging with defaults for any missing fields. */
-export const loadConfig: Effect.Effect<HaTuiConfig> = Effect.sync(() => {
-  try {
-    const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
-    const parsed = parse(raw) as Partial<HaTuiConfig> | null;
-    return {
-      homeassistant: {
-        url:
-          parsed?.homeassistant?.url?.trim() ||
-          DEFAULT_CONFIG.homeassistant.url,
-        token: parsed?.homeassistant?.token?.trim() ?? "",
-      },
-    };
-  } catch {
-    return {
-      homeassistant: { ...DEFAULT_CONFIG.homeassistant },
-    };
-  }
+export const loadConfig: Effect.Effect<HaTuiConfig> = Effect.gen(function* () {
+  const parsed = yield* Effect.try({
+    try: () => parse(fs.readFileSync(CONFIG_PATH, "utf-8")),
+    catch: (cause) => new ConfigError({ operation: "load", cause }),
+  }).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(ConfigFile)),
+    Effect.orElseSucceed((): ConfigFile => ({})),
+  );
+
+  return {
+    homeassistant: {
+      url:
+        parsed.homeassistant?.url?.trim() || DEFAULT_CONFIG.homeassistant.url,
+      token: parsed.homeassistant?.token?.trim() ?? "",
+    },
+  };
 });
 
 /** Persist config to disk. Creates the config directory if needed. */
@@ -61,7 +75,7 @@ export const saveConfig = (
       fs.mkdirSync(CONFIG_DIR, { recursive: true });
       fs.writeFileSync(CONFIG_PATH, stringify(config), "utf-8");
     },
-    catch: (cause) => new ConfigError({ cause }),
+    catch: (cause) => new ConfigError({ operation: "save", cause }),
   });
 
 /**

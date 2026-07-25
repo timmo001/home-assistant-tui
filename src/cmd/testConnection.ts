@@ -14,7 +14,7 @@ import {
   ERR_INVALID_AUTH,
   ERR_CONNECTION_LOST,
 } from "home-assistant-js-websocket";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { loadConfig, isConfigured, CONFIG_PATH } from "../config.js";
 
 function ok(msg: string): void {
@@ -47,6 +47,11 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
+class ConnectionTestError extends Schema.TaggedErrorClass<ConnectionTestError>()(
+  "ConnectionTestError",
+  { cause: Schema.Defect() },
+) {}
+
 export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
   header("Home Assistant TUI — connection test");
 
@@ -76,12 +81,12 @@ export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
 
   const conn = yield* Effect.tryPromise({
     try: () => createConnection({ auth, createSocket }),
-    catch: (err) => err,
+    catch: (cause) => new ConnectionTestError({ cause }),
   }).pipe(
     Effect.matchEffect({
       onFailure: (err) =>
         Effect.sync(() => {
-          fail(`Connection failed: ${describeError(err)}`);
+          fail(`Connection failed: ${describeError(err.cause)}`);
           process.exit(1);
         }),
       onSuccess: (c) => Effect.succeed(c),
