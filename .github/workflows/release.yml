@@ -86,7 +86,7 @@ jobs:
     name: Publish Arch package (home-assistant-tui-bin)
     needs: prepare-aur
     # yamllint disable-line rule:line-length rule:comments
-    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@0ccca490086f604ff9d1c6005ee6c4338bc639b8  # master
+    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@4797d9f93b2636e75dda38232aac206ac161f7e5  # master
     with:
       package-name: home-assistant-tui-bin
       # yamllint disable-line rule:line-length
