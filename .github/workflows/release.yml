@@ -82,6 +82,19 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  publish-arch:
+    name: Publish Arch package (home-assistant-tui-bin)
+    needs: prepare-aur
+    # yamllint disable-line rule:line-length rule:comments
+    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@0ccca490086f604ff9d1c6005ee6c4338bc639b8  # master
+    with:
+      package-name: home-assistant-tui-bin
+      # yamllint disable-line rule:line-length
+      package-files-artifact-name: aur-home-assistant-tui-bin-${{ github.run_id }}-${{ github.run_attempt }}
+      pkgbuild-path: PKGBUILD
+    secrets:
+      ARCH_REPO_DISPATCH_TOKEN: ${{ secrets.ARCH_REPO_DISPATCH_TOKEN }}
+
   publish-aur:
     name: Publish AUR (home-assistant-tui-bin)
     needs: prepare-aur
