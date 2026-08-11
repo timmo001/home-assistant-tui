@@ -31,7 +31,7 @@ jobs:
       !github.event.release.prerelease
     permissions:
       contents: write
-    uses: timmo001/workflows/.github/workflows/release-bun-cli-linux.yml@1ed6e00bfeecec20f59b49bb96a40969ccc8821b # master
+    uses: timmo001/workflows/.github/workflows/release-bun-cli-linux.yml@bab9f4819faa46f068e90d85657cb9be7ee85af4 # master
     with:
       binary-name: home-assistant-tui
       package-name: home-assistant-tui
@@ -86,7 +86,7 @@ jobs:
     name: Publish Arch package (home-assistant-tui-bin)
     needs: prepare-aur
     # yamllint disable-line rule:line-length rule:comments
-    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@1ed6e00bfeecec20f59b49bb96a40969ccc8821b  # master
+    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@bab9f4819faa46f068e90d85657cb9be7ee85af4  # master
     with:
       package-name: home-assistant-tui-bin
       # yamllint disable-line rule:line-length
@@ -98,7 +98,7 @@ jobs:
   publish-aur:
     name: Publish AUR (home-assistant-tui-bin)
     needs: prepare-aur
-    uses: timmo001/workflows/.github/workflows/publish-aur.yml@1ed6e00bfeecec20f59b49bb96a40969ccc8821b # master
+    uses: timmo001/workflows/.github/workflows/publish-aur.yml@bab9f4819faa46f068e90d85657cb9be7ee85af4 # master
     with:
       package-name: home-assistant-tui-bin
       artifact-name: >-
