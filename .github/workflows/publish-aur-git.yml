@@ -49,7 +49,7 @@ jobs:
   publish:
     name: Publish AUR (home-assistant-tui-git)
     needs: prepare
-    uses: timmo001/workflows/.github/workflows/publish-aur.yml@2c2d7c23735e1a6b80fc852d4b669285acecbe8a # master
+    uses: timmo001/workflows/.github/workflows/publish-aur.yml@4c009ef8917b2e71106a0a4327fb0331a77d24a1 # master
     with:
       package-name: home-assistant-tui-git
       artifact-name: >-
