@@ -26,7 +26,7 @@ jobs:
   publish:
     name: Publish Arch package (home-assistant-tui-git)
     # yamllint disable-line rule:line-length
-    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@ae10c4119924b02a07972b9f0b33c51f4f600d09  # master
+    uses: timmo001/workflows/.github/workflows/build-arch-package.yml@9adeeda6f3225e0fc2d1a45cc8afcd9410067187  # master
     with:
       package-name: home-assistant-tui-git
     secrets:
