@@ -17,6 +17,7 @@ const META_PATH = join(
   import.meta.dir,
   "../../frontend/node_modules/@mdi/svg/meta.json",
 );
+
 const OUT_PATH = join(import.meta.dir, "../src/data/mdiCodepoints.ts");
 
 interface MdiEntry {
@@ -30,10 +31,9 @@ const meta: MdiEntry[] = JSON.parse(await Bun.file(META_PATH).text());
 // MDI-assigned code point, which Nerd Font v3 maps 1:1.
 const entries = meta
   .map((e) => {
-    const cp = parseInt(e.codepoint, 16);
-    const glyph = String.fromCodePoint(cp);
     // Use a JSON-safe escape for the Unicode char so the file is ASCII-clean
     const escaped = `\\u{${e.codepoint}}`;
+
     return `  "${e.name}": "${escaped}"`;
   })
   .join(",\n");
@@ -55,4 +55,5 @@ ${entries},
 `;
 
 writeFileSync(OUT_PATH, source, "utf8");
+
 console.log(`Written ${meta.length} entries to ${OUT_PATH}`);

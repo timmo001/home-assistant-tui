@@ -103,8 +103,10 @@ export class VariantPopup {
     // Wire selection event
     this.select.on(SelectRenderableEvents.ITEM_SELECTED, () => {
       const opt = this.select.getSelectedOption();
+
       if (opt) {
         const variant = this.variants[this.select.getSelectedIndex()];
+
         if (variant) {
           this.hide();
           this.callbacks.onSelect(variant.action);
@@ -143,6 +145,7 @@ export class VariantPopup {
    */
   show(item: MenuItem): void {
     const variants = item.variants;
+
     if (!variants || variants.length === 0) return;
 
     this.variants = variants;
@@ -189,6 +192,7 @@ export class VariantPopup {
       case "backspace":
         this.hide();
         this.callbacks.onDismiss();
+
         return true;
       default:
         // Let the SelectRenderable handle up/down/enter via its own focus

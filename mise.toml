@@ -53,6 +53,11 @@ run = "bun run typecheck"
 description = "Run the home-assistant-tui type-check"
 depends = ["typecheck"]
 
+[tasks.lint]
+description = "Lint the home-assistant-tui source"
+depends = ["install"]
+run = "bun run lint"
+
 [tasks.format]
 description = "Format the home-assistant-tui source"
 depends = ["install"]
@@ -64,8 +69,8 @@ depends = ["install"]
 run = "bun run format:check"
 
 [tasks.check]
-description = "Check formatting, types and the production build"
-depends = ["format:check", "typecheck", "build"]
+description = "Check formatting, lint, types and the production build"
+depends = ["format:check", "lint", "typecheck", "build"]
 
 [tasks."gen:icons"]
 description = "Regenerate MDI to Nerd Font codepoint mappings"

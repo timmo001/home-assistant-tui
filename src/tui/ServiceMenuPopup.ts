@@ -99,6 +99,7 @@ export class ServiceMenuPopup {
     this.select.on(SelectRenderableEvents.ITEM_SELECTED, () => {
       const idx = this.select.getSelectedIndex();
       const service = this.services[idx];
+
       if (service) {
         this.hide();
         this.callbacks.onSelect(service);
@@ -173,6 +174,7 @@ export class ServiceMenuPopup {
       case "backspace":
         this.hide();
         this.callbacks.onDismiss();
+
         return true;
       default:
         return false;

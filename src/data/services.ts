@@ -2,8 +2,10 @@ import type {
   Connection,
   HassEntity,
   HassServices,
+  HassService,
 } from "home-assistant-js-websocket";
 import { getServices } from "home-assistant-js-websocket";
+import { Predicate } from "effect";
 
 const log = (msg: string) => console.error(`[ha-tui:services] ${msg}`);
 
@@ -13,6 +15,7 @@ const log = (msg: string) => console.error(`[ha-tui:services] ${msg}`);
 
 /** Cached services keyed by connection instance (WeakRef avoids leaks) */
 let cachedConn: WeakRef<Connection> | null = null;
+
 let cachedServices: HassServices | null = null;
 
 /**
@@ -30,6 +33,7 @@ export async function fetchAllServices(
   const services = await getServices(conn);
   cachedConn = new WeakRef(conn);
   cachedServices = services;
+
   return services;
 }
 
@@ -56,6 +60,7 @@ const DOMAINS_TOGGLE = new Set([
 ]);
 
 const STATES_OFF = ["closed", "locked", "off"];
+
 const CLIMATE_SUPPORT_FLAGS_TURN_ON = 4096;
 
 /**
@@ -71,12 +76,14 @@ export function canToggleEntityState(
 
   if (domain === "group") {
     const groupMembers = entity.attributes.entity_id;
+
     if (!Array.isArray(groupMembers)) {
       return false;
     }
 
     const hasToggleableMember = groupMembers.some((entityId) => {
       const member = getEntityState?.(entityId);
+
       return member
         ? canToggleDomain(services, computeDomain(member.entity_id))
         : false;
@@ -106,7 +113,9 @@ export function domainHasServices(
   domain: string,
 ): boolean {
   const domainServices = services[domain];
+
   if (!domainServices) return false;
+
   return Object.keys(domainServices).length > 0;
 }
 
@@ -119,6 +128,7 @@ export function getServicesForDomain(
   domain: string,
 ): ServiceInfo[] {
   const domainServices = services[domain];
+
   if (!domainServices) return [];
 
   const toggleName = getToggleServiceName(domain);
@@ -138,8 +148,10 @@ export function getServicesForDomain(
   result.sort((a, b) => {
     if (toggleName) {
       if (a.serviceId === toggleName) return -1;
+
       if (b.serviceId === toggleName) return 1;
     }
+
     return a.name.localeCompare(b.name);
   });
 
@@ -225,6 +237,7 @@ function computeDomain(entityId: string): string {
 
 function canToggleDomain(services: HassServices, domain: string): boolean {
   const domainServices = services[domain];
+
   if (!domainServices) {
     return false;
   }
@@ -246,7 +259,8 @@ function canToggleDomain(services: HassServices, domain: string): boolean {
 
 function supportsFeature(entity: HassEntity, feature: number): boolean {
   const supported = entity.attributes.supported_features;
-  return typeof supported === "number" && (supported & feature) !== 0;
+
+  return Predicate.isNumber(supported) && (supported & feature) !== 0;
 }
 
 function isOn(entity: HassEntity): boolean {
@@ -261,11 +275,13 @@ export function getRequiredFields(
   fields: Record<string, ServiceFieldInfo>,
 ): ServiceFieldEntry[] {
   const entries: ServiceFieldEntry[] = [];
+
   for (const [fieldId, field] of Object.entries(fields)) {
     if (field.required) {
       entries.push({ fieldId, ...field });
     }
   }
+
   return entries;
 }
 
@@ -281,19 +297,7 @@ export interface ServiceInfo {
   readonly hasTarget: boolean;
 }
 
-export interface ServiceFieldInfo {
-  readonly example?: string | boolean | number;
-  readonly default?: unknown;
-  readonly required?: boolean;
-  readonly advanced?: boolean;
-  readonly selector?: Record<string, unknown>;
-  readonly filter?: {
-    readonly supported_features?: number[];
-    readonly attribute?: Record<string, unknown[]>;
-  };
-  readonly name?: string;
-  readonly description?: string;
-}
+export type ServiceFieldInfo = HassService["fields"][string];
 
 export interface ServiceFieldEntry extends ServiceFieldInfo {
   readonly fieldId: string;

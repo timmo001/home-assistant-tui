@@ -16,6 +16,7 @@
  *   frontend/node_modules/@mdi/svg/meta.json  (name → codepoint)
  */
 import type { HassEntity } from "home-assistant-js-websocket";
+import { Predicate } from "effect";
 import { type AreaRegistryEntry } from "./areaRegistry.js";
 import { type FloorRegistryEntry } from "./floorRegistry.js";
 import { MDI_CODEPOINTS } from "./mdiCodepoints.js";
@@ -30,6 +31,7 @@ export const DEFAULT_ICON = MDI_CODEPOINTS["file"] ?? "󰈚";
  */
 export function mdiToNerdFont(mdiName: string): string | undefined {
   const name = mdiName.startsWith("mdi:") ? mdiName.slice(4) : mdiName;
+
   return MDI_CODEPOINTS[name];
 }
 
@@ -42,7 +44,7 @@ export function mdiToNerdFont(mdiName: string): string | undefined {
  *
  * Reference: frontend/src/data/icons.ts — FALLBACK_DOMAIN_ICONS
  */
-const DOMAIN_MDI: Record<string, string> = {
+const DOMAIN_MDI = {
   light: "lightbulb",
   switch: "toggle-switch-variant",
   sensor: "eye",
@@ -78,6 +80,7 @@ export const DOMAIN_ICONS: Readonly<Record<string, string>> =
   Object.fromEntries(
     Object.entries(DOMAIN_MDI).flatMap(([domain, mdi]) => {
       const glyph = MDI_CODEPOINTS[mdi];
+
       return glyph !== undefined ? [[domain, glyph]] : [];
     }),
   );
@@ -121,9 +124,11 @@ export function resolveMdiIcon(mdiName: string, fallback: string): string {
 
 export function resolveAreaIcon(area: Pick<AreaRegistryEntry, "icon">): string {
   const fallback = MDI_CODEPOINTS["texture-box"] ?? DEFAULT_ICON;
+
   if (area.icon) {
     return resolveMdiIcon(area.icon, fallback);
   }
+
   return fallback;
 }
 
@@ -134,19 +139,24 @@ export function resolveFloorIcon(
     floorDefaultMdi(floor),
     MDI_CODEPOINTS["home"] ?? DEFAULT_ICON,
   );
+
   if (floor.icon) {
     return resolveMdiIcon(floor.icon, fallback);
   }
+
   return fallback;
 }
 
 export function resolveEntityIcon(entity: HassEntity): string {
-  const attrIcon = entity.attributes["icon"] as string | undefined;
-  if (typeof attrIcon === "string" && attrIcon.length > 0) {
+  const attrIcon = entity.attributes.icon;
+
+  if (Predicate.isString(attrIcon) && attrIcon.length > 0) {
     const glyph = mdiToNerdFont(attrIcon);
+
     if (glyph !== undefined) return glyph;
   }
 
   const domain = entity.entity_id.split(".")[0] ?? "";
+
   return DOMAIN_ICONS[domain] ?? DEFAULT_ICON;
 }

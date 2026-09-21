@@ -1,4 +1,4 @@
-import type { MenuItem, MenuVariant, NotifyConfig, ViewId } from "./types.js";
+import type { MenuItem, MenuVariant } from "./types.js";
 import type { Locale } from "./i18n/index.js";
 
 // --- Helpers ---
@@ -122,7 +122,9 @@ export function buildMenu(locale: Locale): MenuRegistry {
   ]);
 
   const menuItemsById: Map<string, MenuItem> = new Map();
+
   for (const m of mainMenuItems) menuItemsById.set(m.id, m);
+
   for (const m of settingsItems) menuItemsById.set(m.id, m);
 
   return { mainMenuItems, submenus, submenuTitles, menuItemsById };

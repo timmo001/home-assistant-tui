@@ -35,16 +35,21 @@ function header(msg: string): void {
 
 function maskToken(token: string): string {
   if (token.length <= 8) return "****";
+
   return `${token.slice(0, 4)}…${token.slice(-4)}`;
 }
 
-function describeError(err: unknown): string {
-  if (err === ERR_CANNOT_CONNECT)
+function describeError(error: ConnectionTestError): string {
+  if (error.cause === ERR_CANNOT_CONNECT)
     return `ERR_CANNOT_CONNECT — could not reach the server`;
-  if (err === ERR_INVALID_AUTH) return `ERR_INVALID_AUTH — token rejected`;
-  if (err === ERR_CONNECTION_LOST)
+
+  if (error.cause === ERR_INVALID_AUTH)
+    return `ERR_INVALID_AUTH — token rejected`;
+
+  if (error.cause === ERR_CONNECTION_LOST)
     return `ERR_CONNECTION_LOST — connection dropped`;
-  return String(err);
+
+  return String(error.cause);
 }
 
 class ConnectionTestError extends Schema.TaggedError<ConnectionTestError>()(
@@ -60,6 +65,7 @@ export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
   info(`Path: ${CONFIG_PATH}`);
 
   const configured = yield* isConfigured;
+
   if (!configured) {
     fail("No config found or token is empty — run the TUI first-run setup");
     process.exit(1);
@@ -86,7 +92,7 @@ export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
     Effect.matchEffect({
       onFailure: (err) =>
         Effect.sync(() => {
-          fail(`Connection failed: ${describeError(err.cause)}`);
+          fail(`Connection failed: ${describeError(err)}`);
           process.exit(1);
         }),
       onSuccess: (c) => Effect.succeed(c),

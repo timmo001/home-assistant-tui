@@ -42,12 +42,15 @@ export function formatHelpBar(
   const rows: number[][] = [];
   let currentWidth = 0;
   let currentRow: number[] = [];
+
   for (let i = 0; i < plainParts.length; i++) {
     const partWidth = plainParts[i].length;
+
     const candidateWidth =
       currentRow.length > 0
         ? currentWidth + SEPARATOR.length + partWidth
         : partWidth;
+
     if (currentRow.length > 0 && candidateWidth > columns) {
       rows.push(currentRow);
       currentRow = [i];
@@ -57,13 +60,16 @@ export function formatHelpBar(
       currentWidth = candidateWidth;
     }
   }
+
   if (currentRow.length > 0) rows.push(currentRow);
 
   // Build styled chunks with colour-coded keys and actions
   const chunks: TextChunk[] = [];
+
   for (let r = 0; r < rows.length; r++) {
     if (r > 0) chunks.push(fg(theme.fgSubtle)("\n"));
     const row = rows[r];
+
     for (let j = 0; j < row.length; j++) {
       if (j > 0) chunks.push(fg(theme.fgSubtle)(SEPARATOR));
       const entry = entries[row[j]];

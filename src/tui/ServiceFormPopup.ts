@@ -12,6 +12,33 @@ import {
 import type { Theme } from "../theme.js";
 import type { Locale } from "../i18n/index.js";
 import type { ServiceFieldEntry } from "../data/services.js";
+import { Predicate, Schema } from "effect";
+
+// Fields used by this form from frontend/src/data/selector.ts.
+const FormSelectorConfig = Schema.Struct({
+  options: Schema.optionalKey(
+    Schema.Array(
+      Schema.Union([
+        Schema.String,
+        Schema.Struct({ value: Schema.String, label: Schema.String }),
+      ]),
+    ),
+  ),
+  min: Schema.optionalKey(Schema.Finite),
+  max: Schema.optionalKey(Schema.Finite),
+  step: Schema.optionalKey(
+    Schema.Union([Schema.Finite, Schema.Literal("any")]),
+  ),
+  min_mireds: Schema.optionalKey(Schema.Finite),
+  max_mireds: Schema.optionalKey(Schema.Finite),
+});
+
+type FormSelectorConfig = typeof FormSelectorConfig.Type;
+
+type ServiceFormData = Record<
+  string,
+  string | number | boolean | ReturnType<typeof parseDuration>
+>;
 
 /** Width of the form popup in characters */
 const POPUP_WIDTH = 60;
@@ -32,7 +59,7 @@ const SUPPORTED_SELECTORS = new Set([
 /** Configuration for the {@link ServiceFormPopup} component */
 export interface ServiceFormPopupOptions {
   /** Called when the user submits the form */
-  readonly onSubmit: (data: Record<string, unknown>) => void;
+  readonly onSubmit: (data: ServiceFormData) => void;
   /** Called when the popup is dismissed without submission */
   readonly onDismiss: () => void;
 }
@@ -42,7 +69,7 @@ interface FormField {
   readonly fieldId: string;
   readonly label: string;
   readonly selector: string;
-  readonly selectorConfig: Record<string, unknown>;
+  readonly selectorConfig: FormSelectorConfig;
   readonly supported: boolean;
   readonly input: InputRenderable | null;
   readonly textDisplay: TextRenderable | null;
@@ -149,6 +176,7 @@ export class ServiceFormPopup {
     // Calculate height
     const fieldLines = this.fields.length * 3; // label + input + spacing
     const chromeLines = 7; // border(2) + title(1) + titleMargin(1) + helpMargin(1) + help(1) + padding
+
     const totalHeight = Math.min(
       fieldLines + chromeLines,
       this.renderer.height - 4,
@@ -181,36 +209,44 @@ export class ServiceFormPopup {
     if (key.name === "escape") {
       this.hide();
       this.callbacks.onDismiss();
+
       return true;
     }
 
     if (key.name === "tab" || (key.name === "return" && !key.shift)) {
       // Move to next field, or submit if on last field
       const nextIdx = this.nextSupportedFieldIndex(this.focusedFieldIndex + 1);
+
       if (nextIdx === -1 || key.name === "return") {
         // Submit the form
         this.submit();
+
         return true;
       }
+
       this.blurCurrentField();
       this.focusedFieldIndex = nextIdx;
       this.focusCurrentField();
+
       return true;
     }
 
     if (key.name === "tab" && key.shift) {
       // Move to previous field
       const prevIdx = this.prevSupportedFieldIndex(this.focusedFieldIndex - 1);
+
       if (prevIdx !== -1) {
         this.blurCurrentField();
         this.focusedFieldIndex = prevIdx;
         this.focusCurrentField();
       }
+
       return true;
     }
 
     // For boolean/select fields: left/right to cycle options
     const currentField = this.fields[this.focusedFieldIndex];
+
     if (currentField?.supported && currentField.options.length > 0) {
       if (key.name === "left" || key.name === "right") {
         const delta = key.name === "right" ? 1 : -1;
@@ -218,6 +254,7 @@ export class ServiceFormPopup {
         currentField.selectedOption =
           (currentField.selectedOption + delta + len) % len;
         this.updateSelectDisplay(currentField);
+
         return true;
       }
     }
@@ -229,7 +266,7 @@ export class ServiceFormPopup {
   // ── Private ─────────────────────────────────────────────────────────────────
 
   private submit(): void {
-    const data: Record<string, unknown> = {};
+    const data: ServiceFormData = {};
 
     for (const field of this.fields) {
       if (!field.supported) continue;
@@ -237,6 +274,7 @@ export class ServiceFormPopup {
       if (field.options.length > 0) {
         // Boolean or select
         const value = field.options[field.selectedOption];
+
         if (field.selector === "boolean") {
           data[field.fieldId] = value === "true";
         } else {
@@ -244,6 +282,7 @@ export class ServiceFormPopup {
         }
       } else if (field.input) {
         const raw = field.input.value.trim();
+
         if (raw.length === 0) continue;
 
         if (field.selector === "number") {
@@ -264,10 +303,17 @@ export class ServiceFormPopup {
     const selectorType = field.selector
       ? (Object.keys(field.selector)[0] ?? "unknown")
       : "unknown";
-    const selectorConfig = field.selector
-      ? ((Object.values(field.selector)[0] as Record<string, unknown>) ?? {})
-      : {};
+
     const supported = SUPPORTED_SELECTORS.has(selectorType);
+
+    const rawConfig: unknown =
+      supported && field.selector
+        ? (Object.values(field.selector)[0] ?? {})
+        : {};
+
+    const selectorConfig =
+      Schema.decodeUnknownSync(FormSelectorConfig)(rawConfig);
+
     const label = field.name ?? field.fieldId;
     const fieldContainerId = `service-form-field-${index}`;
 
@@ -279,6 +325,7 @@ export class ServiceFormPopup {
         : t`${dim(fg(this.theme.fgMuted)(`⚠ ${label} (${selectorType}) — ${this.strings.entityActions.unsupportedSelector}`))}`,
       marginTop: index > 0 ? 1 : 0,
     });
+
     this.fieldsContainer.add(labelText);
 
     if (!supported) {
@@ -309,7 +356,9 @@ export class ServiceFormPopup {
       });
       this.fieldsContainer.add(textDisplay);
     } else if (selectorType === "select") {
-      options = (selectorConfig.options as string[]) ?? [];
+      options = (selectorConfig.options ?? []).map((option) =>
+        Predicate.isString(option) ? option : option.value,
+      );
       selectedOption = 0;
       const display = options[0] ?? "";
       textDisplay = new TextRenderable(this.renderer, {
@@ -324,6 +373,7 @@ export class ServiceFormPopup {
         selectorConfig,
         field,
       );
+
       input = new InputRenderable(this.renderer, {
         id: `${fieldContainerId}-input`,
         width: POPUP_WIDTH - 6,
@@ -351,30 +401,36 @@ export class ServiceFormPopup {
 
   private getPlaceholder(
     selectorType: string,
-    config: Record<string, unknown>,
+    config: FormSelectorConfig,
     field: ServiceFieldEntry,
   ): string {
     switch (selectorType) {
       case "number": {
-        const min = config.min as number | undefined;
-        const max = config.max as number | undefined;
-        const step = config.step as number | undefined;
+        const { min, max, step } = config;
         const parts: string[] = [];
+
         if (min != null) parts.push(`min: ${min}`);
+
         if (max != null) parts.push(`max: ${max}`);
+
         if (step != null) parts.push(`step: ${step}`);
+
         return parts.length > 0
           ? parts.join(", ")
           : String(field.example ?? "");
       }
+
       case "duration":
         return "HH:MM:SS";
       case "color_temp": {
-        const min = config.min_mireds as number | undefined;
-        const max = config.max_mireds as number | undefined;
+        const min = config.min_mireds;
+        const max = config.max_mireds;
+
         if (min != null && max != null) return `${min}–${max} mireds`;
+
         return String(field.example ?? "mireds");
       }
+
       case "time":
         return "HH:MM";
       case "date":
@@ -394,6 +450,7 @@ export class ServiceFormPopup {
 
   private focusCurrentField(): void {
     const field = this.fields[this.focusedFieldIndex];
+
     if (field?.input) {
       field.input.focus();
     }
@@ -401,6 +458,7 @@ export class ServiceFormPopup {
 
   private blurCurrentField(): void {
     const field = this.fields[this.focusedFieldIndex];
+
     if (field?.input) {
       field.input.blur();
     }
@@ -410,6 +468,7 @@ export class ServiceFormPopup {
     for (let i = from; i < this.fields.length; i++) {
       if (this.fields[i].supported) return i;
     }
+
     return -1;
   }
 
@@ -417,12 +476,14 @@ export class ServiceFormPopup {
     for (let i = from; i >= 0; i--) {
       if (this.fields[i].supported) return i;
     }
+
     return -1;
   }
 
   private clearFields(): void {
     this.fields = [];
     this.focusedFieldIndex = 0;
+
     // Remove all children from the fields container
     for (const child of this.fieldsContainer.getChildren()) {
       this.fieldsContainer.remove(child.id);
@@ -441,13 +502,16 @@ export class ServiceFormPopup {
 // ---------------------------------------------------------------------------
 
 /** Parse a duration string like "HH:MM:SS" or "MM:SS" or just seconds */
-function parseDuration(raw: string): Record<string, number> {
+function parseDuration(raw: string) {
   const parts = raw.split(":").map(Number);
+
   if (parts.length === 3) {
     return { hours: parts[0], minutes: parts[1], seconds: parts[2] };
   }
+
   if (parts.length === 2) {
     return { hours: 0, minutes: parts[0], seconds: parts[1] };
   }
+
   return { hours: 0, minutes: 0, seconds: parts[0] ?? 0 };
 }

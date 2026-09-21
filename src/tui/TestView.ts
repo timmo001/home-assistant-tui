@@ -148,6 +148,7 @@ export class TestView {
 
   setVisible(visible: boolean): void {
     this.root.visible = visible;
+
     if (visible) {
       this.callbacks.onTitleChange?.(this.titleParts);
     } else {
@@ -171,8 +172,10 @@ export class TestView {
   handleKeyPress(key: KeyEvent): boolean {
     if (key.name === "escape" || key.name === "backspace") {
       this.callbacks.onBack();
+
       return true;
     }
+
     return this.tileGrid.handleKeyPress(key);
   }
 

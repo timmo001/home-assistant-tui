@@ -53,6 +53,7 @@ function makeCommandRunner(
             const pad = Math.max(0, cols - label.length);
             const left = Math.floor(pad / 2);
             const right = pad - left;
+
             const header =
               "\x1b[90m" +
               "─".repeat(left) +
@@ -61,6 +62,7 @@ function makeCommandRunner(
               "\x1b[0m\x1b[90m" +
               "─".repeat(right) +
               "\x1b[0m";
+
             process.stdout.write(`\n\n${header}\n\n`);
 
             const proc = Bun.spawn(["bash", "-c", cmd], {
@@ -68,6 +70,7 @@ function makeCommandRunner(
               stdout: "inherit",
               stderr: "inherit",
             });
+
             await proc.exited;
 
             if (wait) {
@@ -76,6 +79,7 @@ function makeCommandRunner(
               );
               await new Promise<void>((resolve) => {
                 const wasRaw = process.stdin.isRaw;
+
                 if (process.stdin.isTTY) process.stdin.setRawMode(true);
                 process.stdin.resume();
                 process.stdin.once("data", () => {
@@ -100,10 +104,12 @@ function makeCommandRunner(
       Effect.tryPromise({
         try: async () => {
           log(`Running silently: ${cmd}`);
+
           const proc = Bun.spawn(["bash", "-c", cmd], {
             stdout: "pipe",
             stderr: "pipe",
           });
+
           const exitCode = await proc.exited;
 
           if (exitCode !== 0) {
@@ -127,12 +133,15 @@ function makeCommandRunner(
             stdout: "pipe",
             stderr: "pipe",
           });
+
           const exitCode = await proc.exited;
 
           if (exitCode !== 0) {
             const stderr = await new Response(proc.stderr).text();
+
             const errMsg =
               stderr.trim().split("\n")[0] || strings.commands.commandFailed;
+
             log(`Notify command failed (exit ${exitCode}): ${stderr}`);
             toast.show(notify.id, errMsg, "error");
           } else {

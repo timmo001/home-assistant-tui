@@ -20,6 +20,7 @@ export function getAreasFloorHierarchy(
   for (const area of areas) {
     if (area.floor_id) {
       const list = floorAreas.get(area.floor_id);
+
       if (list) {
         list.push(area.area_id);
       } else {

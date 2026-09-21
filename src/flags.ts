@@ -37,6 +37,7 @@ export function parseFlags(args: readonly string[], menu: MenuRegistry): Flags {
 
   // Collect all leading positional args (before any flags)
   const positionals: string[] = [];
+
   while (i < args.length && !args[i].startsWith("-")) {
     positionals.push(args[i]);
     i++;
@@ -45,20 +46,24 @@ export function parseFlags(args: readonly string[], menu: MenuRegistry): Flags {
   // Greedy longest-match resolution for subcommand path
   if (positionals.length > 0) {
     let consumed = 0;
+
     // Try longest candidate first, shrink until a match is found
     for (let len = positionals.length; len >= 1; len--) {
       const candidate = positionals.slice(0, len).join(".");
+
       if (isKnownTarget(candidate, menu)) {
         subcommand = candidate;
         consumed = len;
         break;
       }
     }
+
     if (consumed === 0) {
       // No match — use first positional (will fail in resolveSubcommand)
       subcommand = positionals[0];
       consumed = 1;
     }
+
     // Push unconsumed positionals to rest
     for (let j = consumed; j < positionals.length; j++) {
       rest.push(positionals[j]);
@@ -68,6 +73,7 @@ export function parseFlags(args: readonly string[], menu: MenuRegistry): Flags {
   // Parse remaining flags
   for (; i < args.length; i++) {
     const arg = args[i];
+
     if (arg === "--help" || arg === "-h") {
       help = true;
     } else {
@@ -84,7 +90,9 @@ export function resolveSubcommand(
   menu: MenuRegistry,
 ): { type: "item"; itemId: string } | undefined {
   if (menu.menuItemsById.has(sub)) return { type: "item", itemId: sub };
+
   if (menu.submenus.has(sub)) return { type: "item", itemId: sub };
+
   return undefined;
 }
 

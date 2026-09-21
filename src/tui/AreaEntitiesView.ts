@@ -1,4 +1,4 @@
-import { type CliRenderer, type KeyEvent, t, fg, dim } from "@opentui/core";
+import { type CliRenderer, t, fg, dim } from "@opentui/core";
 import {
   subscribeEntities,
   type UnsubscribeFunc,
@@ -203,8 +203,10 @@ export class AreaEntitiesView extends ConnectedView {
           this.filterText = "";
           this.updateFilterBar("");
           this.rebuildAndDisplay();
+
           return;
         }
+
         this.callbacks.onBack();
       },
       onBack: () => this.callbacks.onBack(),
@@ -212,6 +214,7 @@ export class AreaEntitiesView extends ConnectedView {
         if (this.entityActions.hasPopup) {
           return this.entityActions.handleKeyPress(key);
         }
+
         return this.entityActions.handleKeyPress(key);
       },
       wrapSelection: false,
@@ -223,6 +226,7 @@ export class AreaEntitiesView extends ConnectedView {
       // No area selected yet — silently skip initialization.
       // The view will re-initialize when setArea() is called.
       this.initializationInProgress = false;
+
       return;
     }
 
@@ -240,6 +244,7 @@ export class AreaEntitiesView extends ConnectedView {
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
         log("Connection changed during initialization — aborting");
+
         return;
       }
 
@@ -262,6 +267,7 @@ export class AreaEntitiesView extends ConnectedView {
           `Failed to fetch entity registry: ${String(registryResult.reason)}`,
         );
         this.showStatus("Failed to load entities");
+
         return;
       }
 
@@ -308,8 +314,10 @@ export class AreaEntitiesView extends ConnectedView {
 
     if (this.isFirstEntityUpdate) {
       this.isFirstEntityUpdate = false;
+
       if (this.allMenuItems.length === 0) {
         this.showStatus(this.strings.areaEntities.empty);
+
         return;
       }
     }
@@ -328,12 +336,14 @@ export class AreaEntitiesView extends ConnectedView {
       if (entry.disabled_by != null) continue;
 
       const entity = this.entityStates[entry.entity_id];
+
       if (!entity || entity.state === "unavailable") continue;
 
       // Determine entity's area: direct assignment or via device
       const device = entry.device_id
         ? this.deviceMap.get(entry.device_id)
         : undefined;
+
       const entityAreaId = entry.area_id ?? device?.area_id ?? null;
 
       if (entityAreaId !== this.areaId) continue;
@@ -350,6 +360,7 @@ export class AreaEntitiesView extends ConnectedView {
     device: DeviceRegistryEntry | undefined,
   ): SearchableMenuItem {
     const domain = entry.entity_id.split(".")[0] ?? "";
+
     const name =
       entry.name ??
       entity.attributes.friendly_name ??
@@ -375,6 +386,7 @@ export class AreaEntitiesView extends ConnectedView {
       domain,
       stateDisplay,
     ];
+
     if (deviceName) searchFields.push(deviceName);
 
     const icon = resolveEntityIcon(entity);
@@ -410,6 +422,7 @@ export class AreaEntitiesView extends ConnectedView {
     const grouped = items.map(
       (item, index): SearchableMenuItem & { _rank: number } => {
         const group = item.deviceName || noDeviceLabel;
+
         return { ...item, group, _rank: index };
       },
     );
@@ -418,14 +431,17 @@ export class AreaEntitiesView extends ConnectedView {
     grouped.sort((a, b) => {
       const aNoDevice = a.group === noDeviceLabel ? 1 : 0;
       const bNoDevice = b.group === noDeviceLabel ? 1 : 0;
+
       if (aNoDevice !== bNoDevice) return aNoDevice - bNoDevice;
 
       // Alphabetical group order
       const groupCmp = (a.group ?? "").localeCompare(b.group ?? "");
+
       if (groupCmp !== 0) return groupCmp;
 
       // Within group: preserve search relevance order, or sort alphabetically
       if (options?.preserveOrder) return a._rank - b._rank;
+
       return a.title.localeCompare(b.title);
     });
 
@@ -447,6 +463,7 @@ export class AreaEntitiesView extends ConnectedView {
         (item) => item.searchFields,
         FUSE_KEYS,
       );
+
       this.filteredItems = this.applyGrouping(searchResults, {
         preserveOrder: true,
       });
@@ -471,6 +488,7 @@ export class AreaEntitiesView extends ConnectedView {
     const groupLabel = this.strings.entities.groupBy.device;
     const pageInfo = this.pageInfoText;
     const suffix = pageInfo ? `${groupLabel}  ${pageInfo}` : groupLabel;
+
     if (filter.length === 0) {
       this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {
@@ -485,6 +503,7 @@ export class AreaEntitiesView extends ConnectedView {
     if (totalPages <= 1) {
       this.pageInfoText = "";
       this.updateFilterBar(this.filterText);
+
       return;
     }
 

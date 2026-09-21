@@ -8,8 +8,6 @@ import { formatFilterBar } from "./filterBar.js";
 import { MenuList } from "./MenuList.js";
 import { HeaderBlock } from "./HeaderBlock.js";
 
-const log = (msg: string) => console.error(`[ha-tui:MainMenu] ${msg}`);
-
 /** Configuration callbacks for the main menu */
 export interface MainMenuOptions {
   /** Menu items to display */
@@ -125,6 +123,7 @@ export class MainMenu {
   /** Show or hide the main menu view */
   setVisible(visible: boolean): void {
     this.root.visible = visible;
+
     if (!visible) {
       this.blur();
     }

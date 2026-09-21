@@ -44,7 +44,10 @@ export const runTodoCommand = (
     const options = yield* Effect.try({
       try: () => parseTodoCommandOptions(args),
       catch: (cause) =>
-        new TodoCommandError({ message: formatError(cause), cause }),
+        new TodoCommandError({
+          message: cause instanceof Error ? cause.message : String(cause),
+          cause,
+        }),
     });
 
     const result = yield* loadTodoItems(options.entityId).pipe(
@@ -71,16 +74,19 @@ function parseTodoCommandOptions(args: readonly string[]): TodoCommandOptions {
   const unknownFlag = args.find(
     (arg) => arg.startsWith("-") && !todoOutputFlags.has(arg),
   );
+
   if (unknownFlag) {
     throw new Error(`home-assistant-tui todo: unknown option ${unknownFlag}`);
   }
 
   const entityIds = args.filter((arg) => !arg.startsWith("-"));
+
   if (entityIds.length === 0) {
     throw new Error(
       "home-assistant-tui todo requires a todo entity ID, for example: todo.my_tasks",
     );
   }
+
   if (entityIds.length > 1) {
     throw new Error(
       `home-assistant-tui todo accepts one todo entity ID, got: ${entityIds.join(", ")}`,
@@ -100,6 +106,7 @@ function loadTodoItems(
 ): Effect.Effect<readonly TodoItem[], TodoCommandError> {
   return Effect.gen(function* () {
     const configured = yield* isConfigured;
+
     if (!configured) {
       return yield* new TodoCommandError({
         message: `No config found or token is empty at ${CONFIG_PATH}`,
@@ -113,6 +120,7 @@ function loadTodoItems(
       try: async () => {
         const auth = createLongLivedTokenAuth(url, token);
         const conn = await createConnection({ auth, createSocket });
+
         try {
           return await fetchItems(conn, entityId);
         } finally {
@@ -120,7 +128,10 @@ function loadTodoItems(
         }
       },
       catch: (cause) =>
-        new TodoCommandError({ message: formatError(cause), cause }),
+        new TodoCommandError({
+          message: cause instanceof Error ? cause.message : String(cause),
+          cause,
+        }),
     });
   });
 }
@@ -153,6 +164,7 @@ function formatTodoBarJson(
   const count = visible.length;
   const noun = options.includeCompleted ? "total" : "active";
   const label = formatEntityLabel(options.entityId);
+
   const lines = [
     `${label}: ${count.toLocaleString()} ${noun} item${plural(count)}.`,
   ];
@@ -161,6 +173,7 @@ function formatTodoBarJson(
     const due = item.due ? ` (${item.due})` : "";
     lines.push(`- ${item.summary}${due}`);
   }
+
   if (visible.length > 8) {
     lines.push(`+${visible.length - 8} more`);
   }
@@ -172,10 +185,13 @@ function formatTodoBarJson(
   };
 }
 
-function formatBarError(options: TodoCommandOptions, error: unknown): BarJson {
+function formatBarError(
+  options: TodoCommandOptions,
+  error: TodoCommandError,
+): BarJson {
   return {
     text: "?",
-    tooltip: `${formatEntityLabel(options.entityId)}: ${formatError(error)}`,
+    tooltip: `${formatEntityLabel(options.entityId)}: ${error.message}`,
     class: "critical",
   };
 }
@@ -186,10 +202,6 @@ function writeBarJson(value: BarJson): void {
 
 function formatEntityLabel(entityId: string): string {
   return (entityId.split(".")[1] ?? entityId).replaceAll("_", " ");
-}
-
-function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function plural(count: number): string {

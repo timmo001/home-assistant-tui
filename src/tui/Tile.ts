@@ -7,6 +7,7 @@ import {
   fg,
 } from "@opentui/core";
 import type { TextChunk } from "@opentui/core";
+import { Predicate } from "effect";
 import type { Theme } from "../theme.js";
 
 export type TileOptions = {
@@ -28,17 +29,20 @@ function formatSecondary(
   theme: Theme,
   secondary: string | readonly string[],
 ): StyledText {
-  if (typeof secondary === "string") {
+  if (Predicate.isString(secondary)) {
     return t`${fg(theme.fgMuted)(secondary)}`;
   }
 
   const chunks: Array<TextChunk> = [];
+
   for (let index = 0; index < secondary.length; index++) {
     if (index > 0) {
       chunks.push(fg(theme.fgSubtle)(" • "));
     }
+
     chunks.push(fg(theme.fgMuted)(secondary[index]));
   }
+
   return new StyledText(chunks);
 }
 
@@ -49,9 +53,11 @@ function formatPrimary(
   selected: boolean,
 ): StyledText {
   const color = selected ? theme.accent : theme.fg;
+
   if (icon) {
     return t`${fg(color)(icon)} ${fg(color)(primary)}`;
   }
+
   return t`${fg(color)(primary)}`;
 }
 
@@ -91,10 +97,12 @@ export class Tile {
       content: formatPrimary(theme, options.primary, options.icon, false),
       flexGrow: 1,
     });
+
     if (!options.secondary) {
       this.primaryText.marginTop = 1;
       this.primaryText.marginBottom = 1;
     }
+
     this.root.add(this.primaryText);
 
     if (options.secondary) {
@@ -128,6 +136,7 @@ export class Tile {
 
   setSelected(selected: boolean): void {
     this.isSelected = selected;
+
     if (selected) {
       this.root.shouldFill = true;
       this.root.backgroundColor = this.theme.bgSelected;
@@ -135,6 +144,7 @@ export class Tile {
       this.root.shouldFill = false;
       this.root.backgroundColor = undefined;
     }
+
     this.applyContentStyles();
   }
 

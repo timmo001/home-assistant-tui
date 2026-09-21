@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import type { CliRenderer } from "@opentui/core";
 import type { Connection } from "home-assistant-js-websocket";
 import type { ViewId, MenuItem, MenuAction } from "../types.js";
@@ -155,9 +155,11 @@ export class App {
         ...childViewOpts,
         onAreaSelect: (areaId, areaName) => {
           this.areaEntitiesView.setArea(areaId, areaName);
+
           if (this.currentConnection) {
             this.areaEntitiesView.setConnection(this.currentConnection);
           }
+
           this.pushView("areaEntities");
         },
       },
@@ -226,9 +228,11 @@ export class App {
         onSubmit: async (values) => {
           log("Connection form submitted — saving config");
           this.connectionValues = values;
+
           if (onConnectionSaved) {
             await this.runEffect(onConnectionSaved(values));
           }
+
           this.popView();
         },
         onCancel: () => {
@@ -252,26 +256,31 @@ export class App {
     deps.renderer.keyInput.on("keypress", (key) => {
       if (this.variantPopup.visible) {
         this.variantPopup.handleKeyPress(key);
+
         return;
       }
 
       if (this.activeView === "setup") {
         this.connectionForm.handleKeyPress(key);
+
         return;
       }
 
       if (this.activeView === "test") {
         this.testView.handleKeyPress(key);
+
         return;
       }
 
       if (this.activeView === "dashboard") {
         this.dashboardView.handleKeyPress(key);
+
         return;
       }
 
       if (this.activeView === "todo" && this.todoView.hasPopup) {
         this.todoView.handleKeyPress(key);
+
         return;
       }
     });
@@ -285,25 +294,32 @@ export class App {
 
     if (options.executeItemId) {
       const item = this.menu.menuItemsById.get(options.executeItemId);
+
       if (item) {
         this.showView("main");
         const { action } = item;
+
         if (
           action.type === "command" ||
           action.type === "silent" ||
           action.type === "notify"
         ) {
           setTimeout(() => {
-            this.runEffect(this.commandRunner.runSuspended(action.cmd, true))
-              .then(() => deps.renderer.destroy())
-              .catch((err: unknown) => {
-                log(`Execute error: ${err}`);
-                deps.renderer.destroy();
-              });
+            void this.runEffect(
+              this.commandRunner.runSuspended(action.cmd, true).pipe(
+                Effect.catchCause((cause) =>
+                  Effect.sync(() =>
+                    log(`Execute error: ${Cause.pretty(cause)}`),
+                  ),
+                ),
+                Effect.andThen(Effect.sync(() => deps.renderer.destroy())),
+              ),
+            );
           }, 50);
         } else {
           setTimeout(() => this.handleMenuAction(item), 50);
         }
+
         return;
       }
     }
@@ -329,6 +345,7 @@ export class App {
     this.dashboardView.setConnection(conn);
     this.entitiesView.setConnection(conn);
     this.todoView.setConnection(conn);
+
     // AreaEntitiesView gets connection lazily via onAreaSelect
     if (conn) {
       this.areaEntitiesView.setConnection(conn);
@@ -353,12 +370,14 @@ export class App {
     if (this.activeView !== viewId) {
       this.viewStack.push(this.activeView);
     }
+
     this.showView(viewId);
   }
 
   /** Return to the previous view on the stack */
   popView(): void {
     const prev = this.viewStack.pop();
+
     if (prev) {
       this.showView(prev);
     }
@@ -424,6 +443,7 @@ export class App {
       log(`Opening variant popup for item ${item.id}`);
       this.blurActiveView();
       this.variantPopup.show(item);
+
       return;
     }
 
@@ -439,27 +459,50 @@ export class App {
         break;
 
       case "command":
-        this.runEffect(
-          this.commandRunner.runSuspended(action.cmd, action.wait),
-        ).catch((err: unknown) => log(`Command error: ${err}`));
+        void this.runEffect(
+          this.commandRunner
+            .runSuspended(action.cmd, action.wait)
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.sync(() => log(`Command error: ${Cause.pretty(cause)}`)),
+              ),
+            ),
+        );
         break;
 
       case "silent":
-        this.runEffect(this.commandRunner.runSilent(action.cmd)).catch(
-          (err: unknown) => log(`Silent command error: ${err}`),
+        void this.runEffect(
+          this.commandRunner
+            .runSilent(action.cmd)
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.sync(() =>
+                  log(`Silent command error: ${Cause.pretty(cause)}`),
+                ),
+              ),
+            ),
         );
         break;
 
       case "notify":
-        this.runEffect(
-          this.commandRunner.runNotify(action.cmd, action.notify),
-        ).catch((err: unknown) => log(`Notify command error: ${err}`));
+        void this.runEffect(
+          this.commandRunner
+            .runNotify(action.cmd, action.notify)
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.sync(() =>
+                  log(`Notify command error: ${Cause.pretty(cause)}`),
+                ),
+              ),
+            ),
+        );
         break;
 
       case "view":
         if (action.viewId === "todo") {
           this.todoView.setEntityId(action.entityId ?? null);
         }
+
         this.pushView(action.viewId);
         break;
 
@@ -470,6 +513,7 @@ export class App {
           this.submenuView.openSubmenu(action.menuId);
           this.pushView("submenu");
         }
+
         break;
       }
 

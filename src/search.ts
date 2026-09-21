@@ -1,4 +1,5 @@
 import Fuse, { type FuseOptionKey, type Expression } from "fuse.js";
+import { Predicate } from "effect";
 
 /**
  * Strip diacritics from a string for accent-insensitive comparison.
@@ -34,12 +35,14 @@ export function twoPhaseSearch<T>(
   fuseKeys: ReadonlyArray<FuseOptionKey<T>>,
 ): readonly T[] {
   const trimmed = query.trim();
+
   if (trimmed.length === 0) return items;
 
   const terms = stripDiacritics(trimmed).toLowerCase().split(/\s+/);
 
   // Phase 1: exact substring match (all terms must appear somewhere)
   const exactResults = filterExact(items, terms, getFields, fuseKeys);
+
   if (exactResults.length > 0) return exactResults;
 
   // Phase 2: fuzzy fallback
@@ -73,6 +76,7 @@ function filterExact<T>(
       const searchString = fields
         .map((f) => stripDiacritics(f).toLowerCase())
         .join(" ");
+
       passes = terms.every((term) => searchString.includes(term));
     }
 
@@ -84,7 +88,7 @@ function filterExact<T>(
   // Use Fuse.js to rank the matched items — location: 0 + low distance
   // means matches at the start of the string score much higher
   const fuse = new Fuse(matched, {
-    keys: fuseKeys as FuseOptionKey<T>[],
+    keys: [...fuseKeys],
     threshold: 1.0, // accept all (already filtered)
     ignoreLocation: false,
     location: 0,
@@ -95,6 +99,7 @@ function filterExact<T>(
   });
 
   const query = terms.join(" ");
+
   return fuse.search(query).map((r) => r.item);
 }
 
@@ -108,7 +113,7 @@ function filterFuzzy<T>(
   fuseKeys: ReadonlyArray<FuseOptionKey<T>>,
 ): readonly T[] {
   const fuse = new Fuse([...items], {
-    keys: fuseKeys as FuseOptionKey<T>[],
+    keys: [...fuseKeys],
     threshold: 0.2,
     ignoreLocation: true,
     minMatchCharLength: 2,
@@ -123,12 +128,16 @@ function filterFuzzy<T>(
   // Multi-term: Fuse.js $and expression (all terms must match)
   const expression: Expression = {
     $and: terms.map((term) => ({
-      $or: (fuseKeys as FuseOptionKey<T>[]).map((key) => {
-        const name =
-          typeof key === "string" ? key : (key as { name: string }).name;
-        return { [name]: term } as Expression;
+      $or: fuseKeys.map((key) => {
+        const path =
+          Predicate.isString(key) || Array.isArray(key) ? key : key.name;
+
+        const name = Array.isArray(path) ? path.join(".") : path;
+
+        return { [name]: term };
       }),
     })),
   };
+
   return fuse.search(expression).map((r) => r.item);
 }

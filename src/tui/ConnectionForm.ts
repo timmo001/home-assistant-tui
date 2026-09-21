@@ -92,6 +92,7 @@ export class ConnectionForm {
       content: t`${bold(fg(theme.accent)(strings.connectionForm.title))}${fg(theme.fgMuted)(strings.connectionForm.subtitle)}`,
       marginBottom: 2,
     });
+
     this.root.add(titleText);
 
     // URL field
@@ -153,10 +154,11 @@ export class ConnectionForm {
             {
               key: strings.keys.esc,
               action: strings.connectionForm.help.cancel,
-            } as HelpEntry,
+            },
           ]
         : []),
     ];
+
     this.helpBar = new TextRenderable(renderer, {
       id: "conn-form-help",
       content: formatHelpBar(theme, helpEntries),
@@ -200,6 +202,7 @@ export class ConnectionForm {
     if (values.url !== undefined) {
       this.urlInput.value = values.url.trim() || DEFAULT_HA_URL;
     }
+
     if (values.token !== undefined) {
       this.tokenInput.value = values.token;
     }
@@ -215,11 +218,13 @@ export class ConnectionForm {
     if (key.name === "escape") {
       log("Escape pressed — cancelling");
       this.callbacks.onCancel?.();
+
       return true;
     }
 
     if (key.name === "tab") {
       this.cycleField(key.shift ? "backward" : "forward");
+
       return true;
     }
 
@@ -231,11 +236,13 @@ export class ConnectionForm {
         // Submit from the token field
         this.submit();
       }
+
       return true;
     }
 
     // All other keys forwarded to the active input
     const active = this.activeField === "url" ? this.urlInput : this.tokenInput;
+
     return active.handleKeyPress(key);
   }
 
@@ -247,6 +254,7 @@ export class ConnectionForm {
     } else {
       this.activeField = this.activeField === "token" ? "url" : "token";
     }
+
     this.setFieldFocus(this.activeField);
     this.updateLabels();
   }
@@ -267,6 +275,7 @@ export class ConnectionForm {
 
     if (!token) {
       log("Token is empty — not submitting");
+
       // TODO: show inline validation error
       return;
     }
@@ -296,10 +305,12 @@ export class ConnectionForm {
 
   private fieldLabel(field: FieldName): ReturnType<typeof t> {
     const isActive = this.activeField === field;
+
     const label =
       field === "url"
         ? this.strings.connectionForm.urlLabel
         : this.strings.connectionForm.tokenLabel;
+
     return isActive
       ? t`${fg(this.theme.accent)(label)}`
       : t`${fg(this.theme.fgMuted)(label)}`;

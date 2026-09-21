@@ -33,5 +33,6 @@ export function formatBreadcrumb(
   // 3+ parts: dim prefix joined with separators, bold last
   const prefix = parts.slice(0, -1).join(SEPARATOR);
   const last = parts[parts.length - 1];
+
   return t`${fg(theme.fgMuted)(prefix)}${fg(theme.fgSubtle)(SEPARATOR)}${bold(fg(theme.accent)(last))}${sub}`;
 }

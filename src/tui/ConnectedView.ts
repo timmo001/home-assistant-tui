@@ -185,6 +185,7 @@ export abstract class ConnectedView {
       this.cleanup();
       this.conn = null;
       this.showStatus("Disconnected");
+
       return;
     }
 
@@ -195,6 +196,7 @@ export abstract class ConnectedView {
   setVisible(visible: boolean): void {
     this.root.visible = visible;
     this.isVisible = visible;
+
     if (visible) {
       this.callbacks.onTitleChange?.(this.titleParts);
       this.onBecameVisible();
@@ -212,6 +214,7 @@ export abstract class ConnectedView {
   resetAndFocus(): void {
     this.menuList.resetFilter();
     this.menuList.resetSelection();
+
     if (this.isVisible) {
       this.menuList.focus();
     }
@@ -240,6 +243,7 @@ export abstract class ConnectedView {
       this.root.insertBefore(this.statusText, this.menuList);
       this.statusVisible = true;
     }
+
     this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
     this.menuList.setItems([]);
   }

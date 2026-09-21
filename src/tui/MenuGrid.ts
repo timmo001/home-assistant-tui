@@ -95,6 +95,7 @@ export class MenuGrid {
 
   getSelectedId(): string | undefined {
     const section = this.sections[this.sectionIndex];
+
     return section?.items[this.tileIndex]?.id;
   }
 
@@ -106,6 +107,7 @@ export class MenuGrid {
     this.tileIndex = 0;
 
     let isFirstSection = true;
+
     for (const section of sections) {
       if (section.items.length === 0) continue;
 
@@ -130,6 +132,7 @@ export class MenuGrid {
         items: section.items,
         heading,
       };
+
       this.sections.push(state);
 
       for (const item of section.items) {
@@ -140,6 +143,7 @@ export class MenuGrid {
           icon: item.icon,
           width: this.tileWidth,
         });
+
         this.tiles.set(item.id, tile);
         this.entryIds.push(item.id);
         this.scroll.add(tile.box);
@@ -163,10 +167,13 @@ export class MenuGrid {
     patch: { primary?: string; secondary?: string | readonly string[] },
   ): void {
     const tile = this.tiles.get(id);
+
     if (!tile) return;
+
     if (patch.primary !== undefined) {
       tile.setPrimary(patch.primary);
     }
+
     if (patch.secondary !== undefined) {
       tile.setSecondary(patch.secondary);
     }
@@ -189,6 +196,7 @@ export class MenuGrid {
 
   blur(): void {
     this.isFocused = false;
+
     for (const tile of this.tiles.values()) {
       tile.setSelected(false);
     }
@@ -206,13 +214,12 @@ export class MenuGrid {
       return false;
     }
 
-    const isArrow =
-      key.name === "down" ||
-      key.name === "up" ||
-      key.name === "left" ||
-      key.name === "right";
-
-    if (!isArrow) {
+    if (
+      key.name !== "down" &&
+      key.name !== "up" &&
+      key.name !== "left" &&
+      key.name !== "right"
+    ) {
       return false;
     }
 
@@ -220,7 +227,7 @@ export class MenuGrid {
       this.focus();
     }
 
-    this.moveInDirection(key.name as MoveDirection);
+    this.moveInDirection(key.name);
 
     return true;
   }
@@ -229,6 +236,7 @@ export class MenuGrid {
     for (const tile of this.tiles.values()) {
       this.scroll.remove(tile.box.id);
     }
+
     this.tiles.clear();
 
     for (const section of this.sections) {
@@ -240,9 +248,11 @@ export class MenuGrid {
 
   private moveInDirection(direction: MoveDirection): void {
     const layouts = this.getTileLayouts();
+
     const current = layouts.find(
       (layout) => layout.id === this.getSelectedId(),
     );
+
     if (!current) return;
 
     let best: TileLayout | undefined;
@@ -291,15 +301,18 @@ export class MenuGrid {
     this.scroll.updateFromLayout();
 
     const layouts: Array<TileLayout> = [];
+
     for (
       let sectionIndex = 0;
       sectionIndex < this.sections.length;
       sectionIndex++
     ) {
       const section = this.sections[sectionIndex];
+
       for (let tileIndex = 0; tileIndex < section.items.length; tileIndex++) {
         const id = section.items[tileIndex].id;
         const tile = this.tiles.get(id);
+
         if (!tile) continue;
 
         const box = tile.box;
@@ -326,6 +339,7 @@ export class MenuGrid {
     if (!this.isFocused || !selectedId) return;
 
     const tile = this.tiles.get(selectedId);
+
     if (!tile) return;
     tile.setSelected(true);
     this.scroll.scrollChildIntoView(tile.box.id);

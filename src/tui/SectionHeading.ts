@@ -55,6 +55,7 @@ export class SectionHeading {
         paddingLeft: 1,
         alignItems: "center",
       });
+
       this.iconText = new TextRenderable(renderer, {
         id: `${options.id}-icon`,
         content: formatIcon(theme, options.icon),

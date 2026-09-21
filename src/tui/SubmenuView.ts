@@ -137,6 +137,7 @@ export class SubmenuView {
   /** Show or hide the submenu view */
   setVisible(visible: boolean): void {
     this.root.visible = visible;
+
     if (!visible) {
       this.blur();
     }
@@ -161,6 +162,7 @@ export class SubmenuView {
 
   private handleBack(): void {
     const prev = this.menuStack.pop();
+
     if (prev) {
       // Go up one submenu level
       this.loadMenu(prev);
@@ -172,6 +174,7 @@ export class SubmenuView {
 
   private loadMenu(menuId: string): void {
     const items = this.callbacks.submenus.get(menuId);
+
     if (!items) return;
 
     this.currentMenuId = menuId;
@@ -235,6 +238,7 @@ export class SubmenuView {
       const title =
         this.callbacks.submenuTitles.get(this.currentMenuId) ??
         this.currentMenuId;
+
       if (parts[parts.length - 1] !== title) {
         parts.push(title);
       }

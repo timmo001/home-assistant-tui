@@ -30,6 +30,7 @@ const ConfigFile = Schema.Struct({
     }),
   ),
 });
+
 type ConfigFile = typeof ConfigFile.Type;
 
 const DEFAULT_CONFIG: HaTuiConfig = {
@@ -86,12 +87,15 @@ export const isConfigured: Effect.Effect<boolean> = Effect.gen(function* () {
   const accessible = yield* Effect.sync(() => {
     try {
       fs.accessSync(CONFIG_PATH);
+
       return true;
     } catch {
       return false;
     }
   });
+
   if (!accessible) return false;
   const cfg = yield* loadConfig;
+
   return cfg.homeassistant.token.length > 0;
 });

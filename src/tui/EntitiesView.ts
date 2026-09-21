@@ -180,8 +180,10 @@ export class EntitiesView extends ConnectedView {
           this.filterText = "";
           this.updateFilterBar("");
           this.rebuildAndDisplay();
+
           return;
         }
+
         this.callbacks.onBack();
       },
       onBack: () => this.callbacks.onBack(),
@@ -206,6 +208,7 @@ export class EntitiesView extends ConnectedView {
       // Guard: connection may have changed during async fetches
       if (this.conn !== conn) {
         log("Connection changed during initialization — aborting");
+
         return;
       }
 
@@ -236,6 +239,7 @@ export class EntitiesView extends ConnectedView {
           `Failed to fetch entity registry: ${String(registryResult.reason)}`,
         );
         this.showStatus("Failed to load entity registry");
+
         return;
       }
 
@@ -295,6 +299,7 @@ export class EntitiesView extends ConnectedView {
   private async refetchRegistry(conn: Connection): Promise<void> {
     try {
       const entries = await fetchEntityRegistry(conn);
+
       if (this.conn !== conn) return;
       this.registryEntries = entries;
       this.buildAllMenuItems();
@@ -313,6 +318,7 @@ export class EntitiesView extends ConnectedView {
     if (this.isFirstEntityUpdate) {
       this.isFirstEntityUpdate = false;
       this.rebuildAndDisplay();
+
       return;
     }
 
@@ -345,6 +351,7 @@ export class EntitiesView extends ConnectedView {
     entity: HassEntity | undefined,
   ): SearchableMenuItem {
     const domain = entry.entity_id.split(".")[0] ?? "";
+
     const name =
       entry.name ??
       entity?.attributes.friendly_name ??
@@ -364,6 +371,7 @@ export class EntitiesView extends ConnectedView {
     const device = entry.device_id
       ? this.deviceMap.get(entry.device_id)
       : undefined;
+
     const deviceName = device ? computeDeviceName(device) : "";
 
     // Area: prefer entity's area_id, fall back to device's area_id
@@ -385,7 +393,9 @@ export class EntitiesView extends ConnectedView {
       domain,
       stateDisplay,
     ];
+
     if (areaName) searchFields.push(areaName);
+
     if (deviceName) searchFields.push(deviceName);
 
     // Compute icon from entity state if available, fallback to domain
@@ -421,6 +431,7 @@ export class EntitiesView extends ConnectedView {
     options?: { preserveOrder?: boolean },
   ): SearchableMenuItem[] {
     const s = this.strings.entities;
+
     const ungroupedLabels = new Set([
       s.ungrouped.device,
       s.ungrouped.domain,
@@ -431,6 +442,7 @@ export class EntitiesView extends ConnectedView {
     const grouped = items.map(
       (item, index): SearchableMenuItem & { _rank: number } => {
         let group: string;
+
         switch (this.groupMode) {
           case "area":
             group = item.areaName || s.ungrouped.area;
@@ -449,6 +461,7 @@ export class EntitiesView extends ConnectedView {
               : s.ungrouped.domain;
             break;
         }
+
         return { ...item, group, _rank: index };
       },
     );
@@ -457,14 +470,17 @@ export class EntitiesView extends ConnectedView {
     grouped.sort((a, b) => {
       const aUngrouped = ungroupedLabels.has(a.group!) ? 1 : 0;
       const bUngrouped = ungroupedLabels.has(b.group!) ? 1 : 0;
+
       if (aUngrouped !== bUngrouped) return aUngrouped - bUngrouped;
 
       // Alphabetical group order
       const groupCmp = (a.group ?? "").localeCompare(b.group ?? "");
+
       if (groupCmp !== 0) return groupCmp;
 
       // Within group: preserve search relevance order, or sort alphabetically
       if (options?.preserveOrder) return a._rank - b._rank;
+
       return a.title.localeCompare(b.title);
     });
 
@@ -484,6 +500,7 @@ export class EntitiesView extends ConnectedView {
         (item) => item.searchFields,
         FUSE_KEYS,
       );
+
       this.filteredItems = this.applyGrouping(searchResults, {
         preserveOrder: true,
       });
@@ -517,6 +534,7 @@ export class EntitiesView extends ConnectedView {
     const modeLabel = this.groupModeLabel();
     const pageInfo = this.pageInfoText;
     const suffix = pageInfo ? `${modeLabel}  ${pageInfo}` : modeLabel;
+
     if (filter.length === 0) {
       this.filterBar.content = t`${fg(this.theme.fgSubtle)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {
@@ -526,6 +544,7 @@ export class EntitiesView extends ConnectedView {
 
   private groupModeLabel(): string {
     const s = this.strings.entities;
+
     switch (this.groupMode) {
       case "device":
         return s.groupBy.device;
@@ -545,6 +564,7 @@ export class EntitiesView extends ConnectedView {
     if (totalPages <= 1) {
       this.pageInfoText = "";
       this.updateFilterBar(this.filterText);
+
       return;
     }
 
@@ -566,6 +586,7 @@ export class EntitiesView extends ConnectedView {
     if (key.name === "g" && key.ctrl) {
       this.cycleGroupMode();
       this.updateFilterBar(this.filterText);
+
       return true;
     }
 

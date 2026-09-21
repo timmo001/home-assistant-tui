@@ -10,6 +10,7 @@ import type { Locale } from "../i18n/index.js";
 import { formatHeaderBar } from "./headerBar.js";
 
 const MIN_WIDTH_FOR_BLOCK = 160;
+
 const MIN_HEIGHT_FOR_ASCII = 24;
 
 /**

@@ -39,6 +39,7 @@ export function formatHeaderBar(
 
   // Title: breadcrumb when titleParts are provided, otherwise the app name
   let titleText: string;
+
   if (titleParts && titleParts.length > 0) {
     if (titleParts.length === 1) {
       titleText = titleParts[0]!;
@@ -84,8 +85,10 @@ export function formatHeaderBar(
   const leftWidth = titleText.length + 3 + dotChar.length + 1 + label.length;
 
   let usedWidth = leftWidth;
+
   for (const part of rightParts) {
     const raw = chunkText(part);
+
     if (usedWidth + raw.length > columns - 1) break;
     chunks.push(part);
     usedWidth += raw.length;
@@ -119,15 +122,6 @@ function statusLabel(strings: Locale, info: ConnectionInfo): string {
     case "error":
       return strings.status.error;
   }
-}
-
-function formatAgo(strings: Locale, date: Date): string {
-  const secs = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (secs < 5) return strings.status.justNow;
-  if (secs < 60) return strings.status.ago.seconds(secs);
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return strings.status.ago.minutes(mins);
-  return strings.status.ago.hours(Math.floor(mins / 60));
 }
 
 /** Extract plain-text content from a TextChunk for width calculations */

@@ -118,6 +118,7 @@ export class Toast {
       clearTimeout(this.timeout);
       this.timeout = null;
     }
+
     this.currentId = null;
     this.root.visible = false;
   }

@@ -25,6 +25,7 @@ const log = (msg: string) => console.error(`[ha-tui] ${msg}`);
 // Build menu with the default locale for CLI argument parsing.
 // Rebuilt with the resolved locale inside the Effect program.
 const defaultMenu = buildMenu(en);
+
 const flags = parseFlags(process.argv.slice(2), defaultMenu);
 
 if (flags.help) {
@@ -33,6 +34,7 @@ if (flags.help) {
   } else {
     printHelp();
   }
+
   process.exit(0);
 }
 
@@ -83,6 +85,7 @@ if (flags.subcommand === "test-connection") {
 
       if (flags.subcommand) {
         const resolved = resolveSubcommand(flags.subcommand, menu);
+
         if (!resolved) {
           console.error(strings.errors.unknownSubcommand(flags.subcommand));
           printHelp();
@@ -90,8 +93,10 @@ if (flags.subcommand === "test-connection") {
         }
 
         const item = menu.menuItemsById.get(resolved.itemId);
+
         if (item) {
           const { action } = item;
+
           if (
             action.type === "command" ||
             action.type === "silent" ||
@@ -101,6 +106,7 @@ if (flags.subcommand === "test-connection") {
             executeItemId = resolved.itemId;
           } else if (action.type === "view") {
             requestedInitialView = action.viewId;
+
             if (action.viewId === "todo") {
               initialTodoEntityId = flags.rest[0];
             }
@@ -117,14 +123,17 @@ if (flags.subcommand === "test-connection") {
           onDestroy: () => process.exit(0),
         }),
       );
+
       log("Renderer created");
 
       const toast = new Toast(renderer, theme);
       const config = yield* loadConfig;
       const configured = yield* isConfigured;
+
       const initialView = configured
         ? (requestedInitialView ?? "main")
         : "setup";
+
       log(
         `Config ${configured ? "found" : "not found"} — starting on ${initialView}`,
       );
@@ -137,6 +146,7 @@ if (flags.subcommand === "test-connection") {
         const runEffect = Effect.runPromiseWith(
           yield* Effect.context<HomeAssistantService | CommandRunner>(),
         );
+
         const app = new App(
           {
             renderer,
@@ -157,14 +167,17 @@ if (flags.subcommand === "test-connection") {
           // onConnectionSaved — called when user saves the connection form
           (values) => {
             log(`Saving new config: url=${values.url}`);
+
             const newConfig = {
               homeassistant: { url: values.url, token: values.token },
             };
+
             return saveConfig(newConfig).pipe(
               Effect.flatMap(() => ha.reconfigure(newConfig)),
             );
           },
         );
+
         log("App created");
 
         // Subscribe to HA connection state and push updates to views

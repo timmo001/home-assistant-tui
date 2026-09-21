@@ -9,7 +9,7 @@ import {
   ERR_CONNECTION_LOST,
 } from "home-assistant-js-websocket";
 import type { Connection } from "home-assistant-js-websocket";
-import { Context, Layer, Effect, Schema } from "effect";
+import { Context, Layer, Effect, Result, Schema } from "effect";
 import type { HaTuiConfig } from "../config.js";
 import type { ConnectionInfo, ConnectionStatus } from "../types.js";
 import type { Locale } from "../i18n/index.js";
@@ -41,26 +41,33 @@ function makeHomeAssistantService(
   let connection: Connection | null = null;
   let connecting = false;
   const listeners = new Set<ConnectionListener>();
+
   let currentInfo: ConnectionInfo = {
     status: "disconnected",
     url: initialConfig.homeassistant.url,
   };
+
   let unsubStateChanges: (() => Promise<void>) | null = null;
 
   function emit(partial: Partial<ConnectionInfo>): void {
     currentInfo = { ...currentInfo, ...partial };
+
     for (const cb of listeners) cb(currentInfo, connection);
   }
 
-  function resolveErrorStatus(err: unknown): ConnectionStatus {
-    if (err === ERR_INVALID_AUTH) return "error";
-    if (err === ERR_CANNOT_CONNECT) return "disconnected";
-    if (err === ERR_CONNECTION_LOST) return "disconnected";
+  function resolveErrorStatus(error: ConnectionAttemptError): ConnectionStatus {
+    if (error.cause === ERR_INVALID_AUTH) return "error";
+
+    if (error.cause === ERR_CANNOT_CONNECT) return "disconnected";
+
+    if (error.cause === ERR_CONNECTION_LOST) return "disconnected";
+
     return "error";
   }
 
   async function onReady(): Promise<void> {
     log("Connection ready — fetching HA config and user");
+
     if (!connection) return;
 
     const haVersion = connection.haVersion;
@@ -71,6 +78,7 @@ function makeHomeAssistantService(
         getConfig(connection),
         getUser(connection),
       ]);
+
       emit({
         status: "connected",
         haVersion: hassConfig.version ?? haVersion,
@@ -100,8 +108,10 @@ function makeHomeAssistantService(
   const connect = Effect.gen(function* () {
     if (connecting) {
       log("Connect already in progress — skipping");
+
       return;
     }
+
     connecting = true;
     emit({ status: "connecting", errorMessage: undefined });
 
@@ -116,9 +126,13 @@ function makeHomeAssistantService(
     }).pipe(Effect.result);
 
     connecting = false;
-    if (result._tag === "Failure") {
-      const err = result.failure.cause;
-      emit({ status: resolveErrorStatus(err), errorMessage: String(err) });
+
+    if (Result.isFailure(result)) {
+      emit({
+        status: resolveErrorStatus(result.failure),
+        errorMessage: String(result.failure.cause),
+      });
+
       return;
     }
 
@@ -151,6 +165,7 @@ function makeHomeAssistantService(
       void unsubStateChanges();
       unsubStateChanges = null;
     }
+
     connection?.close();
     connection = null;
     emit({ status: "disconnected" });
@@ -162,6 +177,7 @@ function makeHomeAssistantService(
     subscribe: (cb) => {
       listeners.add(cb);
       cb(currentInfo, connection);
+
       return () => {
         listeners.delete(cb);
       };
@@ -191,7 +207,9 @@ export class HomeAssistantService extends Context.Service<
         const service = HomeAssistantService.of(
           makeHomeAssistantService(config, strings),
         );
+
         yield* Effect.addFinalizer(() => service.disconnect);
+
         return service;
       }),
     );

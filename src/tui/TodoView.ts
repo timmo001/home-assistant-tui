@@ -27,11 +27,11 @@ import {
   type TodoItem,
   type TodoList,
 } from "../data/todo.js";
-import { resolveEntityIcon } from "../data/iconResolver.js";
 import { twoPhaseSearch } from "../search.js";
 import type { FuseOptionKey } from "fuse.js";
 
 const log = (msg: string) => console.error(`[ha-tui:TodoView] ${msg}`);
+
 const PAGE_SIZE = 50;
 
 export type TodoViewOptions = ConnectedViewOptions;
@@ -81,10 +81,12 @@ export class TodoView extends ConnectedView {
       onSelect: (action) => {
         if (action.type === "view" && action.viewId === "todo") {
           const entityId = action.entityId;
+
           if (entityId) {
             this.selectTodoList(entityId);
           }
         }
+
         queueMicrotask(() => this.focus());
       },
       onDismiss: () => queueMicrotask(() => this.focus()),
@@ -109,6 +111,7 @@ export class TodoView extends ConnectedView {
 
   setEntityId(entityId: string | null): void {
     this.requestedEntityId = entityId;
+
     if (this.conn) {
       this.doCleanup();
       void this.initializeForConnection(this.conn);
@@ -151,6 +154,7 @@ export class TodoView extends ConnectedView {
       this.root.insertBefore(this.statusText, this.menuList);
       this.statusVisible = true;
     }
+
     this.statusText.content = t`${fg(this.theme.fgMuted)(message)}`;
     this.menuList.setFilteredItems([], { resetSelection: true });
     this.pageInfoText = "";
@@ -211,10 +215,12 @@ export class TodoView extends ConnectedView {
   protected doCleanup(): void {
     this.unsubEntities?.();
     this.unsubEntities = null;
+
     if (this.unsubItems) {
       void this.unsubItems();
       this.unsubItems = null;
     }
+
     this.entityStates = {};
     this.allItems = [];
     this.filteredItems = [];
@@ -246,6 +252,7 @@ export class TodoView extends ConnectedView {
   private handleEntityStatesChanged(): void {
     if (this.selectedEntityId) {
       this.updateSelectedListName();
+
       return;
     }
 
@@ -254,33 +261,43 @@ export class TodoView extends ConnectedView {
         this.showStatus(
           this.strings.todo.entityNotFound(this.requestedEntityId),
         );
+
         return;
       }
+
       this.selectTodoList(this.requestedEntityId);
+
       return;
     }
 
     const lists = getTodoLists(this.entityStates);
+
     if (!this.isVisible) {
       return;
     }
 
     if (lists.length === 0) {
       this.showStatus(this.strings.todo.emptyLists);
+
       return;
     }
+
     if (lists.length === 1) {
       this.selectTodoList(lists[0].entity_id);
+
       return;
     }
+
     if (this.pickerPopup.visible) {
       return;
     }
+
     this.showPicker(lists);
   }
 
   private isValidTodoEntity(entityId: string): boolean {
     const entity = this.entityStates[entityId];
+
     return (
       entity !== undefined &&
       entity.entity_id.split(".")[0] === "todo" &&
@@ -311,6 +328,7 @@ export class TodoView extends ConnectedView {
 
   private selectTodoList(entityId: string): void {
     const conn = this.conn;
+
     if (!conn) return;
 
     this.selectedEntityId = entityId;
@@ -337,6 +355,7 @@ export class TodoView extends ConnectedView {
 
     try {
       this.allItems = await fetchItems(conn, entityId);
+
       if (this.conn !== conn || this.selectedEntityId !== entityId) return;
       this.rebuildAndDisplay({ resetSelection: true });
 
@@ -353,6 +372,7 @@ export class TodoView extends ConnectedView {
 
   private updateSelectedListName(): void {
     const entityId = this.selectedEntityId;
+
     if (!entityId) return;
     const entity = this.entityStates[entityId];
     this.selectedListName = entity ? computeStateName(entity) : entityId;
@@ -366,6 +386,7 @@ export class TodoView extends ConnectedView {
     const visibleItems = this.allItems.filter(
       (item) => this.showCompleted || item.status !== TodoItemStatus.Completed,
     );
+
     const menuItems = visibleItems.map((item) => this.buildMenuItem(item));
 
     this.filteredItems =
@@ -386,6 +407,7 @@ export class TodoView extends ConnectedView {
             ? this.strings.todo.emptyAll
             : this.strings.todo.emptyActive,
       );
+
       return;
     }
 
@@ -397,13 +419,16 @@ export class TodoView extends ConnectedView {
   private buildMenuItem(item: TodoItem): SearchableTodoItem {
     const completed = item.status === TodoItemStatus.Completed;
     const icon = completed ? "󰄬" : "󰄱";
+
     const title = completed
       ? `${this.strings.todo.completedPrefix} ${item.summary}`
       : item.summary;
+
     const descriptionParts = [
       item.description?.trim() || this.strings.todo.noDescription,
       item.due ? this.strings.todo.due(item.due) : "",
     ].filter(Boolean);
+
     const searchFields = [item.summary, item.description ?? "", item.uid];
 
     return {
@@ -431,31 +456,37 @@ export class TodoView extends ConnectedView {
   private handleTodoKeyPress(key: KeyEvent): boolean {
     if (key.name === "a" && !key.ctrl && !key.meta) {
       this.openAddPrompt();
+
       return true;
     }
 
     if (key.name === "e" && !key.ctrl && !key.meta) {
       this.openEditPrompt();
+
       return true;
     }
 
     if (key.name === "d" && !key.ctrl && !key.meta) {
       this.requestDeleteSelected();
+
       return true;
     }
 
     if (key.name === "m" && !key.ctrl && !key.meta) {
       void this.toggleSelectedDone();
+
       return true;
     }
 
     if (key.name === "v" && !key.ctrl && !key.meta) {
       this.toggleCompletedVisibility();
+
       return true;
     }
 
     if (key.name === "w" && !key.ctrl && !key.meta) {
       this.openTodoListInBrowser();
+
       return true;
     }
 
@@ -464,6 +495,7 @@ export class TodoView extends ConnectedView {
 
   private openTodoListInBrowser(): void {
     const entityId = this.selectedEntityId;
+
     if (!entityId || !this.baseUrl) return;
 
     const url = `${this.baseUrl}/todo?entity_id=${encodeURIComponent(entityId)}`;
@@ -477,8 +509,10 @@ export class TodoView extends ConnectedView {
       !this.supports(TodoListEntityFeature.CREATE_TODO_ITEM)
     ) {
       this.toast?.show("todo-action", this.strings.todo.unsupported, "error");
+
       return;
     }
+
     this.blur();
     this.editingItem = null;
     this.itemPrompt.show("add");
@@ -486,11 +520,15 @@ export class TodoView extends ConnectedView {
 
   private openEditPrompt(): void {
     const item = this.selectedTodoItem();
+
     if (!item) return;
+
     if (!this.supports(TodoListEntityFeature.UPDATE_TODO_ITEM)) {
       this.toast?.show("todo-action", this.strings.todo.unsupported, "error");
+
       return;
     }
+
     this.blur();
     this.editingItem = item;
     this.itemPrompt.show("edit", {
@@ -502,12 +540,14 @@ export class TodoView extends ConnectedView {
   private async submitItemPrompt(values: TodoItemPromptValues): Promise<void> {
     const conn = this.conn;
     const entityId = this.selectedEntityId;
+
     if (!conn || !entityId) return;
 
     try {
       const supportsDescription = this.supports(
         TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM,
       );
+
       if (this.editingItem) {
         await updateItem(conn, entityId, {
           ...this.editingItem,
@@ -541,11 +581,15 @@ export class TodoView extends ConnectedView {
 
   private requestDeleteSelected(): void {
     const item = this.selectedTodoItem();
+
     if (!item) return;
+
     if (!this.supports(TodoListEntityFeature.DELETE_TODO_ITEM)) {
       this.toast?.show("todo-action", this.strings.todo.unsupported, "error");
+
       return;
     }
+
     this.pendingDeleteItem = item;
     this.blur();
     this.confirmPrompt.show(
@@ -558,9 +602,11 @@ export class TodoView extends ConnectedView {
     const item = this.pendingDeleteItem;
     const conn = this.conn;
     const entityId = this.selectedEntityId;
+
     if (!item || !conn || !entityId) return;
 
     this.pendingDeleteItem = null;
+
     try {
       await deleteItems(conn, entityId, [item.uid]);
       this.toast?.show("todo-action", this.strings.todo.deleted, "success");
@@ -580,9 +626,12 @@ export class TodoView extends ConnectedView {
     const item = this.selectedTodoItem();
     const conn = this.conn;
     const entityId = this.selectedEntityId;
+
     if (!item || !conn || !entityId) return;
+
     if (!this.supports(TodoListEntityFeature.UPDATE_TODO_ITEM)) {
       this.toast?.show("todo-action", this.strings.todo.unsupported, "error");
+
       return;
     }
 
@@ -613,12 +662,15 @@ export class TodoView extends ConnectedView {
 
   private selectedTodoItem(): TodoItem | undefined {
     const selected = this.menuList.getSelectedItem();
+
     if (!selected) return undefined;
+
     return this.allItems.find((item) => item.uid === selected.id);
   }
 
   private supports(feature: TodoListEntityFeature): boolean {
     const entityId = this.selectedEntityId;
+
     return supportsFeature(
       entityId ? this.entityStates[entityId] : undefined,
       feature,
@@ -629,13 +681,16 @@ export class TodoView extends ConnectedView {
     const completedMode = this.showCompleted
       ? this.strings.todo.completedVisible
       : this.strings.todo.completedHidden;
+
     const suffix = this.pageInfoText
       ? `${completedMode}  ${this.pageInfoText}`
       : completedMode;
+
     if (filter.length === 0) {
       const slashColor = this.menuList.filterActive
         ? this.theme.accent
         : this.theme.fgSubtle;
+
       this.filterBar.content = t`${fg(slashColor)("/")} ${dim(fg(this.theme.fgMuted)(suffix))}`;
     } else {
       this.filterBar.content = t`${fg(this.theme.accent)("/")} ${fg(this.theme.fg)(filter)} ${dim(fg(this.theme.fgMuted)(suffix))}`;
@@ -649,6 +704,7 @@ export class TodoView extends ConnectedView {
     if (totalPages <= 1) {
       this.pageInfoText = "";
       this.updateFilterBar(this.filterText);
+
       return;
     }
 

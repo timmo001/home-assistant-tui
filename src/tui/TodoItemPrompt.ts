@@ -25,6 +25,7 @@ export interface TodoItemPromptOptions {
 }
 
 type PromptMode = "add" | "edit";
+
 type PromptField = "summary" | "description";
 
 export class TodoItemPrompt {
@@ -157,6 +158,7 @@ export class TodoItemPrompt {
     if (key.name === "escape") {
       this.hide();
       this.callbacks.onDismiss();
+
       return true;
     }
 
@@ -165,6 +167,7 @@ export class TodoItemPrompt {
         this.activeField === "summary" ? "description" : "summary";
       this.setFieldFocus(this.activeField);
       this.updateLabels();
+
       return true;
     }
 
@@ -176,6 +179,7 @@ export class TodoItemPrompt {
       } else {
         this.submit();
       }
+
       return true;
     }
 
@@ -189,11 +193,13 @@ export class TodoItemPrompt {
 
   private submit(): void {
     const summary = this.summaryInput.value.trim();
+
     if (!summary) {
       this.statusText.content = t`${fg(this.theme.red)(this.strings.todo.requiredFields)}`;
       this.activeField = "summary";
       this.setFieldFocus("summary");
       this.updateLabels();
+
       return;
     }
 

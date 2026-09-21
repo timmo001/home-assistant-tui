@@ -11,5 +11,6 @@ export function formatFilterBar(theme: Theme, filter: string): StyledText {
   if (filter.length === 0) {
     return t`${fg(theme.fgSubtle)("/")}`;
   }
+
   return t`${fg(theme.accent)("/")} ${fg(theme.fg)(filter)}`;
 }

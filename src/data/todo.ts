@@ -1,5 +1,6 @@
 import { callService } from "home-assistant-js-websocket";
 import type { Connection, HassEntity } from "home-assistant-js-websocket";
+import { Predicate } from "effect";
 
 export interface TodoList {
   readonly entity_id: string;
@@ -38,9 +39,11 @@ type TodoItemsUnsubscribe = () => Promise<void>;
 
 export const computeStateName = (stateObj: HassEntity): string => {
   const friendlyName = stateObj.attributes.friendly_name;
+
   if (friendlyName !== undefined) {
     return String(friendlyName ?? "");
   }
+
   return (
     stateObj.entity_id.split(".")[1]?.replace(/_/g, " ") ?? stateObj.entity_id
   );
@@ -67,6 +70,7 @@ export const fetchItems = async (
     type: "todo/item/list",
     entity_id: entityId,
   });
+
   return result.items;
 };
 
@@ -80,12 +84,12 @@ export const subscribeItems = (
     entity_id: entityId,
   });
 
-export const createItem = (
+export const createItem = async (
   conn: Connection,
   entityId: string,
   item: Pick<TodoItem, "summary" | "description">,
-): Promise<unknown> =>
-  callService(
+): Promise<void> => {
+  await callService(
     conn,
     "todo",
     "add_item",
@@ -95,13 +99,14 @@ export const createItem = (
     },
     { entity_id: entityId },
   );
+};
 
-export const updateItem = (
+export const updateItem = async (
   conn: Connection,
   entityId: string,
   item: Pick<TodoItem, "uid" | "summary"> & Partial<TodoItem>,
-): Promise<unknown> =>
-  callService(
+): Promise<void> => {
+  await callService(
     conn,
     "todo",
     "update_item",
@@ -113,13 +118,14 @@ export const updateItem = (
     },
     { entity_id: entityId },
   );
+};
 
-export const deleteItems = (
+export const deleteItems = async (
   conn: Connection,
   entityId: string,
   uids: readonly string[],
-): Promise<unknown> =>
-  callService(
+): Promise<void> => {
+  await callService(
     conn,
     "todo",
     "remove_item",
@@ -128,11 +134,13 @@ export const deleteItems = (
     },
     { entity_id: entityId },
   );
+};
 
 export function supportsFeature(
   entity: HassEntity | undefined,
   feature: number,
 ): boolean {
   const supported = entity?.attributes.supported_features;
-  return typeof supported === "number" && (supported & feature) !== 0;
+
+  return Predicate.isNumber(supported) && (supported & feature) !== 0;
 }

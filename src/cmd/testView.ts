@@ -33,6 +33,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
         onDestroy: () => process.exit(0),
       }),
     );
+
     log("Renderer created");
 
     const toast = new Toast(renderer, theme);
@@ -42,6 +43,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
     return yield* Effect.gen(function* () {
       const ha = yield* HomeAssistantService;
       const cr = yield* CommandRunner;
+
       const runEffect = Effect.runPromiseWith(
         yield* Effect.context<HomeAssistantService | CommandRunner>(),
       );
@@ -63,6 +65,7 @@ export const runTestView: Effect.Effect<void> = Effect.scoped(
           initialConnectionValues: config.homeassistant,
         },
       );
+
       log("App created with test view");
 
       ha.subscribe((info, conn) => {

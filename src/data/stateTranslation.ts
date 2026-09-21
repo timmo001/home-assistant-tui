@@ -51,9 +51,11 @@ export const fetchStateTranslations = async (
   ]);
 
   const merged: FlatTranslations = {};
+
   if (stateResult.status === "fulfilled") {
     Object.assign(merged, stateResult.value.resources);
   }
+
   if (entityResult.status === "fulfilled") {
     Object.assign(merged, entityResult.value.resources);
   }
@@ -78,27 +80,32 @@ export const translateEntityState = (
   // Step 1: canonical sentinel states
   if (state === "unknown" || state === "unavailable") {
     const translated = localize(`state.default.${state}`);
+
     // localize returns the key itself when not found — guard against that
     return translated === `state.default.${state}` ? state : translated;
   }
 
   // Step 2: numeric entities — keep raw value and append unit
-  const unit = attributes.unit_of_measurement as string | undefined;
+  const unit = attributes.unit_of_measurement;
+
   if (unit != null) {
     return `${state} ${unit}`;
   }
 
   // Step 3: device-class-specific translation
-  const deviceClass = attributes.device_class as string | undefined;
+  const deviceClass = attributes.device_class;
+
   if (deviceClass) {
     const key = `component.${domain}.entity_component.${deviceClass}.state.${state}`;
     const translated = localize(key);
+
     if (translated !== key) return translated;
   }
 
   // Step 4: generic domain translation (device_class = "_")
   const genericKey = `component.${domain}.entity_component._.state.${state}`;
   const translated = localize(genericKey);
+
   if (translated !== genericKey) return translated;
 
   // Step 5: raw state as fallback

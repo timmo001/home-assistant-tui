@@ -11,6 +11,7 @@ import {
 import type { Theme } from "../theme.js";
 
 const PROMPT_WIDTH = 54;
+
 const PROMPT_HEIGHT = 7;
 
 export interface ConfirmPromptOptions {
@@ -95,12 +96,14 @@ export class ConfirmPrompt {
     if (key.name === "y" && !key.ctrl && !key.meta) {
       this.hide();
       this.callbacks.onConfirm();
+
       return true;
     }
 
     if (key.name === "escape" || key.name === "backspace") {
       this.hide();
       this.callbacks.onDismiss();
+
       return true;
     }
 

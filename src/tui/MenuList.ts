@@ -17,6 +17,7 @@ const ICON_COLUMN_WIDTH = 4;
 
 /** Sentinel item ID prefix for pagination rows */
 const SENTINEL_NEXT = "__page_next__";
+
 const SENTINEL_PREV = "__page_prev__";
 
 /** Internal state for a single rendered menu row */
@@ -192,8 +193,10 @@ export class MenuList extends ScrollBoxRenderable {
 
     // Determine the target page
     let targetPage = this._currentPage;
+
     if (prevId && items.length > 0 && this._isPaginated()) {
       const globalIndex = items.findIndex((item) => item.id === prevId);
+
       if (globalIndex >= 0) {
         targetPage = Math.floor(globalIndex / this._pageSize!);
       } else {
@@ -211,6 +214,7 @@ export class MenuList extends ScrollBoxRenderable {
     ) {
       this._patchRowsInPlace();
       this._emitPageChange();
+
       return;
     }
 
@@ -227,6 +231,7 @@ export class MenuList extends ScrollBoxRenderable {
       const restoredRowIdx = this._rows.findIndex(
         (r) => !r.isGroupHeader && !r.isSentinel && r.item.id === prevId,
       );
+
       if (restoredRowIdx >= 0 && restoredRowIdx !== this._selectedIndex) {
         this._applySelection(restoredRowIdx);
       }
@@ -246,6 +251,7 @@ export class MenuList extends ScrollBoxRenderable {
   ): boolean {
     // Get new page items
     let newPageItems: readonly MenuItem[];
+
     if (this._pageSize && newItems.length > this._pageSize) {
       const start = targetPage * this._pageSize;
       const end = start + this._pageSize;
@@ -256,18 +262,25 @@ export class MenuList extends ScrollBoxRenderable {
 
     // Walk current rows and compare against new page items
     let itemIdx = 0;
+
     for (const row of this._rows) {
       if (row.isSentinel) continue;
+
       if (row.isGroupHeader) {
         // Check that the next item in the new list starts a group with this name
         const nextItem = newPageItems[itemIdx];
+
         if (!nextItem || nextItem.group !== row.item.title) return false;
         continue;
       }
+
       // Regular item row — must match by ID and group
       const newItem = newPageItems[itemIdx];
+
       if (!newItem) return false;
+
       if (newItem.id !== row.item.id) return false;
+
       if (newItem.group !== row.item.group) return false;
       itemIdx++;
     }
@@ -287,9 +300,11 @@ export class MenuList extends ScrollBoxRenderable {
 
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx];
+
       if (row.isSentinel || row.isGroupHeader) continue;
 
       const newItem = pageItems[itemIdx];
+
       if (!newItem) break;
 
       // Update stored item reference
@@ -322,12 +337,15 @@ export class MenuList extends ScrollBoxRenderable {
   isFirstSelectableSelected(): boolean {
     if (this._rows.length === 0) return true;
     const first = this._nextSelectableIndex(-1, 1);
+
     return this._selectedIndex === first;
   }
 
   getSelectedItem(): MenuItem | undefined {
     const row = this._rows[this._selectedIndex];
+
     if (!row || row.isGroupHeader || row.isSentinel) return undefined;
+
     return row.item;
   }
 
@@ -343,9 +361,11 @@ export class MenuList extends ScrollBoxRenderable {
   /** Move selection to the first selectable row */
   resetSelection(): void {
     if (this._rows.length === 0) return;
+
     const firstSelectable = this._rows.findIndex(
       (r) => !r.isGroupHeader && !r.isSentinel,
     );
+
     if (firstSelectable >= 0 && firstSelectable !== this._selectedIndex) {
       this._applySelection(firstSelectable);
     }
@@ -379,6 +399,7 @@ export class MenuList extends ScrollBoxRenderable {
   ): void {
     // Update in _allItems (always, so Fuse and future filter passes see fresh data)
     const allIdx = this._allItems.findIndex((i) => i.id === id);
+
     if (allIdx === -1) return;
 
     const updatedItem: MenuItem = { ...this._allItems[allIdx], ...patch };
@@ -391,6 +412,7 @@ export class MenuList extends ScrollBoxRenderable {
 
     // Update in the current filtered view if the item is visible
     const itemIdx = this._items.findIndex((i) => i.id === id);
+
     if (itemIdx === -1) return;
 
     this._items = [
@@ -402,12 +424,14 @@ export class MenuList extends ScrollBoxRenderable {
     // Check if this item is on the current page
     const pageItems = this._pageItems();
     const pageIdx = pageItems.findIndex((i) => i.id === id);
+
     if (pageIdx === -1) return;
 
     // Find the matching row (accounts for group headers and sentinels)
     const rowIdx = this._rows.findIndex(
       (r) => !r.isSentinel && !r.isGroupHeader && r.item.id === id,
     );
+
     if (rowIdx === -1) return;
     const row = this._rows[rowIdx];
 
@@ -420,6 +444,7 @@ export class MenuList extends ScrollBoxRenderable {
     if (patch.title !== undefined) {
       row.titleText.content = t`${fg(textColor)(updatedItem.title)}`;
     }
+
     if (patch.description !== undefined) {
       row.descText.content = t`${fg(th.fgMuted)(updatedItem.description)}`;
     }
@@ -442,6 +467,7 @@ export class MenuList extends ScrollBoxRenderable {
         if (key.name === "escape" || key.name === "return") {
           this._filterActive = false;
           this._onFilterChange?.(this._filterText);
+
           return true;
         }
 
@@ -454,6 +480,7 @@ export class MenuList extends ScrollBoxRenderable {
             this._filterActive = false;
             this._onFilterChange?.(this._filterText);
           }
+
           return true;
         }
 
@@ -467,11 +494,13 @@ export class MenuList extends ScrollBoxRenderable {
           this._filterText += key.sequence;
           this._currentPage = 0;
           this._applyFilter();
+
           return true;
         }
       } else if (key.sequence === "/" && !key.ctrl && !key.meta) {
         this._filterActive = true;
         this._onFilterChange?.(this._filterText);
+
         return true;
       }
     }
@@ -486,12 +515,16 @@ export class MenuList extends ScrollBoxRenderable {
         this._filterText = "";
         this._currentPage = 0;
         this._applyFilter();
+
         return true;
       }
+
       if (this._onEscape) {
         this._onEscape();
+
         return true;
       }
+
       return false;
     }
 
@@ -501,48 +534,63 @@ export class MenuList extends ScrollBoxRenderable {
         this._filterText = this._filterText.slice(0, -1);
         this._currentPage = 0;
         this._applyFilter();
+
         return true;
       }
+
       if (this._onBack) {
         this._onBack();
+
         return true;
       }
+
       return false;
     }
 
     // Page navigation
     if (key.name === "pagedown") {
       this._nextPage();
+
       return true;
     }
+
     if (key.name === "pageup") {
       this._prevPage();
+
       return true;
     }
 
     // Arrow navigation
     if (key.name === "up") {
       this._moveSelection(-1);
+
       return true;
     }
+
     if (key.name === "down") {
       this._moveSelection(1);
+
       return true;
     }
 
     // Enter: select highlighted item or handle sentinel
     if (key.name === "return") {
       const row = this._rows[this._selectedIndex];
+
       if (!row || row.isGroupHeader) return true;
+
       if (row.isSentinel) {
         if (row.item.id === SENTINEL_NEXT) {
           this._nextPage();
         } else if (row.item.id === SENTINEL_PREV) {
           this._prevPage();
         }
+
         return true;
       }
+
       this._selectCb(row.item);
+
       return true;
     }
 
@@ -555,10 +603,12 @@ export class MenuList extends ScrollBoxRenderable {
       !key.meta
     ) {
       const ch = key.sequence;
+
       if (ch >= " ") {
         this._filterText += ch;
         this._currentPage = 0;
         this._applyFilter();
+
         return true;
       }
     }
@@ -574,6 +624,7 @@ export class MenuList extends ScrollBoxRenderable {
 
   private _computeTotalPages(): number {
     if (!this._pageSize || this._items.length <= this._pageSize) return 1;
+
     return Math.ceil(this._items.length / this._pageSize);
   }
 
@@ -581,6 +632,7 @@ export class MenuList extends ScrollBoxRenderable {
     if (!this._isPaginated()) return this._items;
     const start = this._currentPage * this._pageSize!;
     const end = start + this._pageSize!;
+
     return this._items.slice(start, end);
   }
 
@@ -597,6 +649,7 @@ export class MenuList extends ScrollBoxRenderable {
   private _nextPage(): void {
     if (!this._isPaginated()) return;
     const total = this._computeTotalPages();
+
     if (this._currentPage >= total - 1) return;
     this._currentPage++;
     this._clearRows();
@@ -608,19 +661,23 @@ export class MenuList extends ScrollBoxRenderable {
 
   private _prevPage(): void {
     if (!this._isPaginated()) return;
+
     if (this._currentPage <= 0) return;
     this._currentPage--;
     this._clearRows();
     // Select last selectable row on the page (before next sentinel)
     this._selectedIndex = 0;
     this._buildRows();
+
     // Navigate to last selectable row
     const lastSelectable = this._rows.findLastIndex(
       (r) => !r.isGroupHeader && !r.isSentinel,
     );
+
     if (lastSelectable >= 0 && lastSelectable !== this._selectedIndex) {
       this._applySelection(lastSelectable);
     }
+
     this._emitPageChange();
   }
 
@@ -651,28 +708,33 @@ export class MenuList extends ScrollBoxRenderable {
       // External filter mode: just emit the callback, don't touch items/rows.
       // The consumer will call setFilteredItems() with new results.
       this._onFilterChange?.(this._filterText);
+
       return;
     }
 
     // Remember currently selected item before clearing
     const currentRow = this._rows[this._selectedIndex];
+
     const currentItemId =
       currentRow && !currentRow.isGroupHeader && !currentRow.isSentinel
         ? currentRow.item.id
         : undefined;
 
     this._clearRows();
+
     if (this._filterText.length === 0) {
       // Restoring full list — try to preserve selected item
       this._items = this._allItems;
       this._selectedIndex = 0;
       this._buildRows();
+
       // Restore selection if item still exists
       if (currentItemId) {
         const restoredIdx = this._rows.findIndex(
           (r) =>
             !r.isGroupHeader && !r.isSentinel && r.item.id === currentItemId,
         );
+
         if (restoredIdx >= 0) this._applySelection(restoredIdx);
       }
     } else {
@@ -681,12 +743,14 @@ export class MenuList extends ScrollBoxRenderable {
       this._selectedIndex = 0;
       this._buildRows();
     }
+
     this._onFilterChange?.(this._filterText);
     this._emitPageChange();
   }
 
   private _moveSelection(delta: number): void {
     const len = this._rows.length;
+
     if (len === 0) return;
 
     const direction = delta > 0 ? 1 : -1;
@@ -695,6 +759,7 @@ export class MenuList extends ScrollBoxRenderable {
     // Move in the given direction, skipping group headers
     for (let steps = Math.abs(delta); steps > 0; ) {
       next += direction;
+
       if (this._wrapSelection) {
         if (next < 0) next = len - 1;
         else if (next >= len) next = 0;
@@ -704,22 +769,29 @@ export class MenuList extends ScrollBoxRenderable {
           break;
         }
       }
+
       // Only count this step if we landed on a selectable row
       if (!this._rows[next]?.isGroupHeader) steps--;
+
       // Safety: avoid infinite loops if all rows are headers
       if (next === this._selectedIndex) break;
     }
+
     if (next !== this._selectedIndex) this._applySelection(next);
   }
 
   private _applySelection(newIndex: number): void {
     const oldRow = this._rows[this._selectedIndex];
     const newRow = this._rows[newIndex];
+
     if (oldRow) this._styleRow(oldRow, false);
+
     if (newRow) this._styleRow(newRow, true);
     this._selectedIndex = newIndex;
+
     // Scroll the selected item into view
     if (newRow) this.scrollChildIntoView(newRow.container.id);
+
     // Emit selection changed for non-sentinel rows
     if (newRow && !newRow.isSentinel) {
       this._selectionChangedCb?.(newRow.item);
@@ -730,6 +802,7 @@ export class MenuList extends ScrollBoxRenderable {
     for (const row of this._rows) {
       this.remove(row.container.id);
     }
+
     this._rows = [];
   }
 
@@ -742,6 +815,7 @@ export class MenuList extends ScrollBoxRenderable {
         "Previous page",
         0 === this._selectedIndex,
       );
+
       this._rows.push(sentinel);
       this.add(sentinel.container);
     }
@@ -761,6 +835,7 @@ export class MenuList extends ScrollBoxRenderable {
         this.add(header.container);
         rowIndex++;
       }
+
       lastGroup = item.group;
 
       const isSelected = rowIndex === this._selectedIndex;
@@ -778,6 +853,7 @@ export class MenuList extends ScrollBoxRenderable {
         "Next page",
         rowIndex === this._selectedIndex,
       );
+
       this._rows.push(sentinel);
       this.add(sentinel.container);
     }
@@ -810,10 +886,12 @@ export class MenuList extends ScrollBoxRenderable {
       width: ICON_COLUMN_WIDTH,
       paddingLeft: 1,
     });
+
     const iconText = new TextRenderable(this._renderer, {
       id: `${id}-icon`,
       content: t``,
     });
+
     iconCol.add(iconText);
     container.add(iconCol);
 
@@ -823,14 +901,17 @@ export class MenuList extends ScrollBoxRenderable {
       flexGrow: 1,
       flexDirection: "column",
     });
+
     const titleText = new TextRenderable(this._renderer, {
       id: `${id}-title`,
       content: t`${bold(fg(th.fgSubtle)(group))}`,
     });
+
     const descText = new TextRenderable(this._renderer, {
       id: `${id}-desc`,
       content: t``,
     });
+
     textCol.add(titleText);
     textCol.add(descText);
     container.add(textCol);
@@ -858,18 +939,23 @@ export class MenuList extends ScrollBoxRenderable {
   /** Find the next selectable row index in the given direction, skipping group headers */
   private _nextSelectableIndex(from: number, direction: 1 | -1): number {
     const len = this._rows.length;
+
     if (len === 0) return 0;
     let idx = from;
+
     for (let attempts = 0; attempts < len; attempts++) {
       idx += direction;
+
       if (this._wrapSelection) {
         if (idx < 0) idx = len - 1;
         else if (idx >= len) idx = 0;
       } else {
         if (idx < 0 || idx >= len) return from;
       }
+
       if (!this._rows[idx]?.isGroupHeader) return idx;
     }
+
     return from;
   }
 
@@ -896,10 +982,12 @@ export class MenuList extends ScrollBoxRenderable {
       width: ICON_COLUMN_WIDTH,
       paddingLeft: 1,
     });
+
     const iconText = new TextRenderable(this._renderer, {
       id: `${this.id}-${id}-icon`,
       content: t`${fg(textColor)(icon)}`,
     });
+
     iconCol.add(iconText);
     container.add(iconCol);
 
@@ -908,14 +996,17 @@ export class MenuList extends ScrollBoxRenderable {
       flexGrow: 1,
       flexDirection: "column",
     });
+
     const titleText = new TextRenderable(this._renderer, {
       id: `${this.id}-${id}-title`,
       content: t`${fg(textColor)(title)}`,
     });
+
     const descText = new TextRenderable(this._renderer, {
       id: `${this.id}-${id}-desc`,
       content: t``,
     });
+
     textCol.add(titleText);
     textCol.add(descText);
     container.add(textCol);
@@ -966,10 +1057,12 @@ export class MenuList extends ScrollBoxRenderable {
       width: ICON_COLUMN_WIDTH,
       paddingLeft: 1,
     });
+
     const iconText = new TextRenderable(this._renderer, {
       id: `${id}-icon`,
       content: t`${fg(textColor)(item.icon)}`,
     });
+
     iconCol.add(iconText);
     container.add(iconCol);
 
@@ -979,14 +1072,17 @@ export class MenuList extends ScrollBoxRenderable {
       flexGrow: 1,
       flexDirection: "column",
     });
+
     const titleText = new TextRenderable(this._renderer, {
       id: `${id}-title`,
       content: t`${fg(textColor)(item.title)}`,
     });
+
     const descText = new TextRenderable(this._renderer, {
       id: `${id}-desc`,
       content: t`${fg(descColor)(item.description)}`,
     });
+
     textCol.add(titleText);
     textCol.add(descText);
     container.add(textCol);
@@ -1006,6 +1102,7 @@ export class MenuList extends ScrollBoxRenderable {
   private _styleRow(row: MenuRow, selected: boolean): void {
     const th = this._theme;
     const bg = selected ? th.bgSelected : th.bgElevated;
+
     const textColor = row.isSentinel
       ? selected
         ? th.accent
@@ -1013,11 +1110,13 @@ export class MenuList extends ScrollBoxRenderable {
       : selected
         ? th.accent
         : th.fg;
+
     const descColor = selected ? th.fgMuted : th.fgMuted;
 
     row.container.backgroundColor = bg;
     row.iconText.content = t`${fg(textColor)(row.item.icon)}`;
     row.titleText.content = t`${fg(textColor)(row.item.title)}`;
+
     if (!row.isSentinel) {
       row.descText.content = t`${fg(descColor)(row.item.description)}`;
     }
