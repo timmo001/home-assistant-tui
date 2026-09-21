@@ -47,7 +47,7 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
-class ConnectionTestError extends Schema.TaggedErrorClass<ConnectionTestError>()(
+class ConnectionTestError extends Schema.TaggedError<ConnectionTestError>()(
   "ConnectionTestError",
   { cause: Schema.Defect() },
 ) {}

@@ -39,7 +39,7 @@ const DEFAULT_CONFIG: HaTuiConfig = {
   },
 };
 
-export class ConfigError extends Schema.TaggedErrorClass<ConfigError>()(
+export class ConfigError extends Schema.TaggedError<ConfigError>()(
   "ConfigError",
   {
     operation: Schema.String,

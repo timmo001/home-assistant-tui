@@ -21,7 +21,7 @@ interface BarJson {
   readonly class: string;
 }
 
-class TodoCommandError extends Schema.TaggedErrorClass<TodoCommandError>()(
+class TodoCommandError extends Schema.TaggedError<TodoCommandError>()(
   "TodoCommandError",
   {
     message: Schema.String,

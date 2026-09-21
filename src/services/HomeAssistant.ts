@@ -28,7 +28,7 @@ export interface HomeAssistantServiceI {
   readonly reconfigure: (config: HaTuiConfig) => Effect.Effect<void>;
 }
 
-class ConnectionAttemptError extends Schema.TaggedErrorClass<ConnectionAttemptError>()(
+class ConnectionAttemptError extends Schema.TaggedError<ConnectionAttemptError>()(
   "ConnectionAttemptError",
   { cause: Schema.Defect() },
 ) {}
