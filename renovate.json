@@ -3,6 +3,12 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
+      "description": "Update the Effect runtime and integrations together.",
+      "matchPackageNames": ["effect", "@effect/platform-*", "@effect/vitest"],
+      "groupName": "Effect",
+      "groupSlug": "effect"
+    },
+    {
       "matchPackageNames": ["effect"],
       "ignoreUnstable": false,
       "minimumReleaseAge": null
