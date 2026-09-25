@@ -1,10 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "external_directory": {
-      "~/repos/home-assistant/**": "allow"
+  "permissions": [
+    {
+      "action": "external_directory",
+      "resource": "~/repos/home-assistant/**",
+      "effect": "allow"
     }
-  },
+  ],
   "references": {
     "core": {
       "path": "../core",
