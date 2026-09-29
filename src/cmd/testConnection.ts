@@ -14,7 +14,7 @@ import {
   ERR_INVALID_AUTH,
   ERR_CONNECTION_LOST,
 } from "home-assistant-js-websocket";
-import { Effect, Schema } from "effect";
+import { Effect, type FileSystem, Schema } from "effect";
 import { loadConfig, isConfigured, CONFIG_PATH } from "../config.js";
 
 function ok(msg: string): void {
@@ -57,7 +57,11 @@ class ConnectionTestError extends Schema.TaggedError<ConnectionTestError>()(
   { cause: Schema.Defect() },
 ) {}
 
-export const runTestConnection: Effect.Effect<void> = Effect.gen(function* () {
+export const runTestConnection: Effect.Effect<
+  void,
+  never,
+  FileSystem.FileSystem
+> = Effect.gen(function* () {
   header("Home Assistant TUI — connection test");
 
   // ── Config ────────────────────────────────────────────────────────────────

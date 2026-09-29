@@ -194,11 +194,18 @@ export class MenuList extends ScrollBoxRenderable {
     // Determine the target page
     let targetPage = this._currentPage;
 
-    if (prevId && items.length > 0 && this._isPaginated()) {
+    const pageSize = this._pageSize;
+
+    if (
+      prevId &&
+      items.length > 0 &&
+      pageSize !== undefined &&
+      this._isPaginated()
+    ) {
       const globalIndex = items.findIndex((item) => item.id === prevId);
 
       if (globalIndex >= 0) {
-        targetPage = Math.floor(globalIndex / this._pageSize!);
+        targetPage = Math.floor(globalIndex / pageSize);
       } else {
         targetPage = 0;
       }
@@ -629,9 +636,11 @@ export class MenuList extends ScrollBoxRenderable {
   }
 
   private _pageItems(): readonly MenuItem[] {
-    if (!this._isPaginated()) return this._items;
-    const start = this._currentPage * this._pageSize!;
-    const end = start + this._pageSize!;
+    const pageSize = this._pageSize;
+
+    if (pageSize === undefined || !this._isPaginated()) return this._items;
+    const start = this._currentPage * pageSize;
+    const end = start + pageSize;
 
     return this._items.slice(start, end);
   }

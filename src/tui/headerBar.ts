@@ -40,17 +40,19 @@ export function formatHeaderBar(
   // Title: breadcrumb when titleParts are provided, otherwise the app name
   let titleText: string;
 
-  if (titleParts && titleParts.length > 0) {
+  const firstPart = titleParts?.[0];
+  const lastPart = titleParts?.at(-1);
+
+  if (titleParts && firstPart !== undefined && lastPart !== undefined) {
     if (titleParts.length === 1) {
-      titleText = titleParts[0]!;
+      titleText = firstPart;
       chunks.push(bold(fg(theme.accent)(titleText)));
     } else {
       const prefix = titleParts.slice(0, -1).join(" › ");
-      const last = titleParts[titleParts.length - 1]!;
-      titleText = `${prefix} › ${last}`;
+      titleText = `${prefix} › ${lastPart}`;
       chunks.push(fg(theme.fgMuted)(prefix));
       chunks.push(fg(theme.fgSubtle)(" › "));
-      chunks.push(bold(fg(theme.accent)(last)));
+      chunks.push(bold(fg(theme.accent)(lastPart)));
     }
   } else {
     titleText = strings.app.name;

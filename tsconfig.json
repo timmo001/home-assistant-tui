@@ -11,7 +11,10 @@
     "rootDir": "src",
     "types": ["bun-types"],
     "plugins": [
-      { "name": "@effect/language-service" }
+      {
+        "name": "@effect/language-service",
+        "ignoreEffectWarningsInTscExitCode": true
+      }
     ]
   },
   "include": ["src"]

@@ -1,8 +1,7 @@
 import { parse, stringify } from "yaml";
-import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { Effect, Schema } from "effect";
+import { Effect, FileSystem, Schema } from "effect";
 
 const CONFIG_DIR = path.join(
   os.homedir(),
@@ -49,11 +48,21 @@ export class ConfigError extends Schema.TaggedError<ConfigError>()(
 ) {}
 
 /** Load config from disk, merging with defaults for any missing fields. */
-export const loadConfig: Effect.Effect<HaTuiConfig> = Effect.gen(function* () {
-  const parsed = yield* Effect.try({
-    try: () => parse(fs.readFileSync(CONFIG_PATH, "utf-8")),
-    catch: (cause) => new ConfigError({ operation: "load", cause }),
-  }).pipe(
+export const loadConfig: Effect.Effect<
+  HaTuiConfig,
+  never,
+  FileSystem.FileSystem
+> = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem;
+
+  const parsed = yield* fs.readFileString(CONFIG_PATH).pipe(
+    Effect.mapError((cause) => new ConfigError({ operation: "load", cause })),
+    Effect.flatMap((contents) =>
+      Effect.try({
+        try: () => parse(contents),
+        catch: (cause) => new ConfigError({ operation: "load", cause }),
+      }),
+    ),
     Effect.flatMap(Schema.decodeUnknownEffect(ConfigFile)),
     Effect.orElseSucceed((): ConfigFile => ({})),
   );
@@ -70,29 +79,30 @@ export const loadConfig: Effect.Effect<HaTuiConfig> = Effect.gen(function* () {
 /** Persist config to disk. Creates the config directory if needed. */
 export const saveConfig = (
   config: HaTuiConfig,
-): Effect.Effect<void, ConfigError> =>
-  Effect.try({
-    try: () => {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true });
-      fs.writeFileSync(CONFIG_PATH, stringify(config), "utf-8");
-    },
-    catch: (cause) => new ConfigError({ operation: "save", cause }),
-  });
+): Effect.Effect<void, ConfigError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+
+    yield* fs.makeDirectory(CONFIG_DIR, { recursive: true });
+    yield* fs.writeFileString(CONFIG_PATH, stringify(config));
+  }).pipe(
+    Effect.mapError((cause) => new ConfigError({ operation: "save", cause })),
+  );
 
 /**
  * Returns true when a config file exists with a non-empty token.
  * A false result means the first-run setup flow should be shown.
  */
-export const isConfigured: Effect.Effect<boolean> = Effect.gen(function* () {
-  const accessible = yield* Effect.sync(() => {
-    try {
-      fs.accessSync(CONFIG_PATH);
+export const isConfigured: Effect.Effect<
+  boolean,
+  never,
+  FileSystem.FileSystem
+> = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem;
 
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  const accessible = yield* fs
+    .exists(CONFIG_PATH)
+    .pipe(Effect.orElseSucceed(() => false));
 
   if (!accessible) return false;
   const cfg = yield* loadConfig;

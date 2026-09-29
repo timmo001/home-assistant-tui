@@ -1,4 +1,5 @@
-import { Effect, Layer } from "effect";
+import { BunServices } from "@effect/platform-bun";
+import { Effect, FileSystem, Layer } from "effect";
 import { createCliRenderer } from "@opentui/core";
 import { CommandRunner } from "./services/CommandRunner.js";
 import { HomeAssistantService } from "./services/HomeAssistant.js";
@@ -50,7 +51,9 @@ if (flags.subcommand === "test-connection") {
     process.stdout.write("\nCancelled.\n");
     process.exit(0);
   });
-  Effect.runPromise(runTestConnection).catch((err) => {
+  Effect.runPromise(
+    runTestConnection.pipe(Effect.provide(BunServices.layer)),
+  ).catch((err) => {
     console.error(err);
     process.exit(1);
   });
@@ -59,12 +62,16 @@ if (flags.subcommand === "test-connection") {
     process.stdout.write("\n");
     process.exit(0);
   });
-  Effect.runPromise(runTestView).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  Effect.runPromise(runTestView.pipe(Effect.provide(BunServices.layer))).catch(
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    },
+  );
 } else if (flags.subcommand === "todo" && hasTodoOutputFlag(flags.rest)) {
-  Effect.runPromise(runTodoCommand(flags.rest)).catch((err) => {
+  Effect.runPromise(
+    runTodoCommand(flags.rest).pipe(Effect.provide(BunServices.layer)),
+  ).catch((err) => {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);
   });
@@ -127,6 +134,7 @@ if (flags.subcommand === "test-connection") {
       log("Renderer created");
 
       const toast = new Toast(renderer, theme);
+      const fs = yield* FileSystem.FileSystem;
       const config = yield* loadConfig;
       const configured = yield* isConfigured;
 
@@ -173,6 +181,7 @@ if (flags.subcommand === "test-connection") {
             };
 
             return saveConfig(newConfig).pipe(
+              Effect.provideService(FileSystem.FileSystem, fs),
               Effect.flatMap(() => ha.reconfigure(newConfig)),
             );
           },
@@ -210,9 +219,11 @@ if (flags.subcommand === "test-connection") {
 
   log("Launching...");
 
-  Effect.runPromise(program).catch((err) => {
-    log(`Fatal error: ${err}`);
-    console.error(err);
-    process.exit(1);
-  });
+  Effect.runPromise(program.pipe(Effect.provide(BunServices.layer))).catch(
+    (err) => {
+      log(`Fatal error: ${err}`);
+      console.error(err);
+      process.exit(1);
+    },
+  );
 }

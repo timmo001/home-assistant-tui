@@ -4,7 +4,8 @@
  * Opens the TestView without navigating through the main menu.
  * Useful for exercising TUI scaffolding during development.
  */
-import { Effect, Layer } from "effect";
+import { Effect, type FileSystem, Layer } from "effect";
+import { type ChildProcessSpawner } from "effect/process";
 import { createCliRenderer } from "@opentui/core";
 import { CommandRunner } from "../services/CommandRunner.js";
 import { HomeAssistantService } from "../services/HomeAssistant.js";
@@ -17,7 +18,11 @@ import { Strings } from "../i18n/index.js";
 
 const log = (msg: string) => console.error(`[ha-tui:test-view] ${msg}`);
 
-export const runTestView: Effect.Effect<void> = Effect.scoped(
+export const runTestView: Effect.Effect<
+  void,
+  never,
+  FileSystem.FileSystem | ChildProcessSpawner.ChildProcessSpawner
+> = Effect.scoped(
   Effect.gen(function* () {
     const strings = yield* Strings;
     const theme = yield* loadTheme;

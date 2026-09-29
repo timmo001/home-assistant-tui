@@ -468,8 +468,8 @@ export class EntitiesView extends ConnectedView {
 
     // Sort: groups alphabetically, ungrouped to bottom
     grouped.sort((a, b) => {
-      const aUngrouped = ungroupedLabels.has(a.group!) ? 1 : 0;
-      const bUngrouped = ungroupedLabels.has(b.group!) ? 1 : 0;
+      const aUngrouped = ungroupedLabels.has(a.group ?? "") ? 1 : 0;
+      const bUngrouped = ungroupedLabels.has(b.group ?? "") ? 1 : 0;
 
       if (aUngrouped !== bUngrouped) return aUngrouped - bUngrouped;
 

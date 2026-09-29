@@ -1,5 +1,6 @@
 import type { CliRenderer } from "@opentui/core";
-import { Context, Layer, Effect, Schema } from "effect";
+import { Context, Layer, Effect, Schema, Stream } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import type { NotifyConfig } from "../types.js";
 import type { Toast } from "../tui/Toast.js";
 import type { Locale } from "../i18n/index.js";
@@ -38,46 +39,69 @@ function makeCommandRunner(
   renderer: CliRenderer,
   toast: Toast,
   strings: Locale,
+  spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
 ): CommandRunnerI {
+  const runBash = (cmd: string, stdio: "inherit" | "pipe") =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const child = yield* spawner.spawn(
+          ChildProcess.make("bash", ["-c", cmd], {
+            stdin: stdio === "inherit" ? "inherit" : "ignore",
+            stdout: stdio,
+            stderr: stdio,
+          }),
+        );
+
+        if (stdio === "inherit") {
+          return { code: Number(yield* child.exitCode), stderr: "" };
+        }
+
+        const [, stderr, code] = yield* Effect.all(
+          [
+            Stream.runDrain(child.stdout),
+            child.stderr.pipe(Stream.decodeText(), Stream.mkString),
+            child.exitCode,
+          ],
+          { concurrency: "unbounded" },
+        );
+
+        return { code: Number(code), stderr };
+      }),
+    );
+
   return {
     runSuspended: Effect.fn("CommandRunner.runSuspended")((cmd, wait) =>
-      Effect.tryPromise({
-        try: async () => {
-          log(`Suspending for: ${cmd}`);
-          renderer.suspend();
-          renderer.currentRenderBuffer.clear();
+      Effect.gen(function* () {
+        log(`Suspending for: ${cmd}`);
+        renderer.suspend();
+        renderer.currentRenderBuffer.clear();
 
-          try {
-            const cols = process.stdout.columns || 80;
-            const label = ` ${cmd} `;
-            const pad = Math.max(0, cols - label.length);
-            const left = Math.floor(pad / 2);
-            const right = pad - left;
+        const cols = process.stdout.columns || 80;
+        const label = ` ${cmd} `;
+        const pad = Math.max(0, cols - label.length);
+        const left = Math.floor(pad / 2);
+        const right = pad - left;
 
-            const header =
-              "\x1b[90m" +
-              "─".repeat(left) +
-              "\x1b[0m\x1b[1m" +
-              label +
-              "\x1b[0m\x1b[90m" +
-              "─".repeat(right) +
-              "\x1b[0m";
+        const header =
+          "\x1b[90m" +
+          "─".repeat(left) +
+          "\x1b[0m\x1b[1m" +
+          label +
+          "\x1b[0m\x1b[90m" +
+          "─".repeat(right) +
+          "\x1b[0m";
 
-            process.stdout.write(`\n\n${header}\n\n`);
+        process.stdout.write(`\n\n${header}\n\n`);
 
-            const proc = Bun.spawn(["bash", "-c", cmd], {
-              stdin: "inherit",
-              stdout: "inherit",
-              stderr: "inherit",
-            });
+        yield* runBash(cmd, "inherit");
 
-            await proc.exited;
-
-            if (wait) {
-              process.stdout.write(
-                `\n\x1b[90m${strings.commands.pressAnyKey}\x1b[0m`,
-              );
-              await new Promise<void>((resolve) => {
+        if (wait) {
+          process.stdout.write(
+            `\n\x1b[90m${strings.commands.pressAnyKey}\x1b[0m`,
+          );
+          yield* Effect.promise(
+            () =>
+              new Promise<void>((resolve) => {
                 const wasRaw = process.stdin.isRaw;
 
                 if (process.stdin.isTTY) process.stdin.setRawMode(true);
@@ -87,70 +111,58 @@ function makeCommandRunner(
                   process.stdin.pause();
                   resolve();
                 });
-              });
-            }
-          } finally {
+              }),
+          );
+        }
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
             renderer.currentRenderBuffer.clear();
             renderer.resume();
             renderer.requestRender();
             log("Resumed after command");
-          }
-        },
-        catch: (cause) => new CommandError({ command: cmd, cause }),
-      }),
+          }),
+        ),
+        Effect.mapError((cause) => new CommandError({ command: cmd, cause })),
+      ),
     ),
 
     runSilent: Effect.fn("CommandRunner.runSilent")((cmd) =>
-      Effect.tryPromise({
-        try: async () => {
-          log(`Running silently: ${cmd}`);
+      Effect.gen(function* () {
+        log(`Running silently: ${cmd}`);
 
-          const proc = Bun.spawn(["bash", "-c", cmd], {
-            stdout: "pipe",
-            stderr: "pipe",
-          });
+        const { code, stderr } = yield* runBash(cmd, "pipe");
 
-          const exitCode = await proc.exited;
-
-          if (exitCode !== 0) {
-            const stderr = await new Response(proc.stderr).text();
-            log(`Silent command failed (exit ${exitCode}): ${stderr}`);
-          } else {
-            log(`Silent command completed: ${cmd}`);
-          }
-        },
-        catch: (cause) => new CommandError({ command: cmd, cause }),
-      }),
+        if (code !== 0) {
+          log(`Silent command failed (exit ${code}): ${stderr}`);
+        } else {
+          log(`Silent command completed: ${cmd}`);
+        }
+      }).pipe(
+        Effect.mapError((cause) => new CommandError({ command: cmd, cause })),
+      ),
     ),
 
     runNotify: Effect.fn("CommandRunner.runNotify")((cmd, notify) =>
-      Effect.tryPromise({
-        try: async () => {
-          log(`Running with notification: ${cmd}`);
-          toast.show(notify.id, notify.progress, "info");
+      Effect.gen(function* () {
+        log(`Running with notification: ${cmd}`);
+        toast.show(notify.id, notify.progress, "info");
 
-          const proc = Bun.spawn(["bash", "-c", cmd], {
-            stdout: "pipe",
-            stderr: "pipe",
-          });
+        const { code, stderr } = yield* runBash(cmd, "pipe");
 
-          const exitCode = await proc.exited;
+        if (code !== 0) {
+          const errMsg =
+            stderr.trim().split("\n")[0] || strings.commands.commandFailed;
 
-          if (exitCode !== 0) {
-            const stderr = await new Response(proc.stderr).text();
-
-            const errMsg =
-              stderr.trim().split("\n")[0] || strings.commands.commandFailed;
-
-            log(`Notify command failed (exit ${exitCode}): ${stderr}`);
-            toast.show(notify.id, errMsg, "error");
-          } else {
-            log(`Notify command completed: ${cmd}`);
-            toast.show(notify.id, notify.success, "success");
-          }
-        },
-        catch: (cause) => new CommandError({ command: cmd, cause }),
-      }),
+          log(`Notify command failed (exit ${code}): ${stderr}`);
+          toast.show(notify.id, errMsg, "error");
+        } else {
+          log(`Notify command completed: ${cmd}`);
+          toast.show(notify.id, notify.success, "success");
+        }
+      }).pipe(
+        Effect.mapError((cause) => new CommandError({ command: cmd, cause })),
+      ),
     ),
   };
 }
@@ -163,9 +175,20 @@ export class CommandRunner extends Context.Service<
     renderer: CliRenderer,
     toast: Toast,
     strings: Locale,
-  ): Layer.Layer<CommandRunner> {
-    return Layer.sync(CommandRunner, () =>
-      CommandRunner.of(makeCommandRunner(renderer, toast, strings)),
+  ): Layer.Layer<
+    CommandRunner,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner
+  > {
+    return Layer.effect(
+      CommandRunner,
+      Effect.gen(function* () {
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+        return CommandRunner.of(
+          makeCommandRunner(renderer, toast, strings, spawner),
+        );
+      }),
     );
   }
 }

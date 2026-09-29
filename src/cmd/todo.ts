@@ -4,7 +4,7 @@ import {
   createSocket,
 } from "home-assistant-js-websocket";
 import type { Connection } from "home-assistant-js-websocket";
-import { Effect, Schema } from "effect";
+import { Effect, type FileSystem, Schema } from "effect";
 import { CONFIG_PATH, isConfigured, loadConfig } from "../config.js";
 import { fetchItems, TodoItemStatus, type TodoItem } from "../data/todo.js";
 
@@ -39,7 +39,7 @@ export function hasTodoOutputFlag(args: readonly string[]): boolean {
 /** Run a non-interactive todo output command. */
 export const runTodoCommand = (
   args: readonly string[],
-): Effect.Effect<void, TodoCommandError> =>
+): Effect.Effect<void, TodoCommandError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const options = yield* Effect.try({
       try: () => parseTodoCommandOptions(args),
@@ -103,7 +103,7 @@ function parseTodoCommandOptions(args: readonly string[]): TodoCommandOptions {
 
 function loadTodoItems(
   entityId: string,
-): Effect.Effect<readonly TodoItem[], TodoCommandError> {
+): Effect.Effect<readonly TodoItem[], TodoCommandError, FileSystem.FileSystem> {
   return Effect.gen(function* () {
     const configured = yield* isConfigured;
 
