@@ -14,7 +14,7 @@ permissions:
 jobs:
   lint:
     # yamllint disable-line rule:line-length
-    uses: timmo001/workflows/.github/workflows/lint-oxlint.yml@d787ea887605af00fd70650e7be38acbdab95aad # 20260929.0
+    uses: timmo001/workflows/.github/workflows/lint-oxlint.yml@36527a2230bed48409ccd595b17f8344efe0acdd # 20261001.1
   ci:
     runs-on: ubuntu-latest
 
