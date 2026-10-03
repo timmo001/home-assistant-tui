@@ -14,9 +14,9 @@ permissions:
 jobs:
   lint:
     # yamllint disable-line rule:line-length
-    uses: timmo001/workflows/.github/workflows/lint-oxlint.yml@a7b34d53ef8f83b1763fd0d3257a0168416e23ab # 20261001.2
+    uses: timmo001/workflows/.github/workflows/lint-oxlint.yml@f72d1eb6c310502499f5551d65ceca1e478eb266 # 20261003.0
   build:
     # yamllint disable-line rule:line-length
-    uses: timmo001/workflows/.github/workflows/build-bun-cli.yml@a7b34d53ef8f83b1763fd0d3257a0168416e23ab # 20261001.2
+    uses: timmo001/workflows/.github/workflows/build-bun-cli.yml@f72d1eb6c310502499f5551d65ceca1e478eb266 # 20261003.0
     with:
       smoke-test: ./dist/home-assistant-tui --help
