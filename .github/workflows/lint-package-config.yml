@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   pkgbuild:
-    uses: timmo001/workflows/.github/workflows/lint-arch-pkgbuild.yml@a7b34d53ef8f83b1763fd0d3257a0168416e23ab # 20261001.2
+    uses: timmo001/workflows/.github/workflows/lint-arch-pkgbuild.yml@f72d1eb6c310502499f5551d65ceca1e478eb266 # 20261003.0
     with:
       pkgbuild-paths: |-
         .scripts/linux/PKGBUILD
