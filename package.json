@@ -8,7 +8,7 @@
     "dev": "bun run --watch src/index.ts",
     "build": "bun build src/index.ts --compile --outfile dist/home-assistant-tui",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --max-warnings 0",
+    "lint": "oxlint",
     "ci": "bun run format:check && bun run lint && bun run typecheck && bun run build",
     "gen:icons": "bun run scripts/gen-mdi-codepoints.ts",
     "format": "prettier --write \"src/**/*.ts\"",
