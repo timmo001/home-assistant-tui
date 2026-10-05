@@ -15,7 +15,7 @@
     "format:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
-    "@effect/platform-bun": "4.0.0",
+    "@effect/platform-bun": "4.0.1",
     "@opentui/core": "^0.4.0",
     "effect": "4.0.1",
     "fuse.js": "^7.3.0",
