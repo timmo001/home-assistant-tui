@@ -12,9 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    # yamllint disable-line rule:line-length
-    uses: timmo001/workflows/.github/workflows/lint-oxlint.yml@82ee28374d3471231113dabc3dd436f65a47132f # 20261004.0
   build:
     # yamllint disable-line rule:line-length
     uses: timmo001/workflows/.github/workflows/build-bun-cli.yml@82ee28374d3471231113dabc3dd436f65a47132f # 20261004.0
