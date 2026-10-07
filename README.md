@@ -52,7 +52,7 @@ mise run serve:show   # Show the visible background TUI screen
 mise run serve:stop   # Stop the background TUI session
 mise run build        # Compile to standalone binary at dist/home-assistant-tui
 mise run typecheck    # Typecheck with tsc
-mise run check        # Format check, typecheck, and build
+mise run check        # Format check, lint, typecheck and build in parallel
 mise run gen:icons    # Regenerate MDI→Nerd Font codepoint map
 mise run format       # Format with Prettier
 mise run format:check # Check formatting

@@ -9,7 +9,7 @@
     "build": "bun build src/index.ts --compile --outfile dist/home-assistant-tui",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
-    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run build",
+    "ci": "bun run --parallel --no-exit-on-error format:check lint typecheck build",
     "gen:icons": "bun run scripts/gen-mdi-codepoints.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\""

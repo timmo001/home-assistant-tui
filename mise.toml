@@ -50,8 +50,9 @@ depends = ["install"]
 run = "bun run typecheck"
 
 [tasks.test]
-description = "Run the home-assistant-tui type-check"
-depends = ["typecheck"]
+description = "Run home-assistant-tui tests"
+depends = ["install"]
+run = "bun test --pass-with-no-tests"
 
 [tasks.lint]
 description = "Lint the home-assistant-tui source"
