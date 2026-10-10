@@ -31,10 +31,10 @@
     },
     "opentui": {
       "source": "anomalyco/opentui",
-      "ref": "5494865060b668c9889eb1e2bf1dea481b9c54d9",
+      "ref": "786d423e9c9ef65bb41eaa5a8770b6d8ce5ee170",
       "sourceType": "github",
       "skillPath": "packages/web/src/content/SKILL.md",
-      "computedHash": "3c6fd0ff79744607576e42ec3b67d6f09bc825d53f27c32b3ed1f363b00ccf60"
+      "computedHash": "25dad8bceb989d0084d8304618678a8d3b3f018a0fbf3cc51552cb54be87ed45"
     },
     "skill-prefixes": {
       "source": "timmo001/skills",
