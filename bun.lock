@@ -5,7 +5,7 @@
     "": {
       "name": "starter-tui-menu",
       "dependencies": {
-        "@effect/platform-bun": "4.0.2",
+        "@effect/platform-bun": "4.0.3",
         "@opentui/core": "^0.4.0",
         "effect": "4.0.2",
         "fuse.js": "^7.3.0",
@@ -24,7 +24,7 @@
     },
   },
   "packages": {
-    "@effect/platform-bun": ["@effect/platform-bun@4.0.2", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.2" }, "peerDependencies": { "effect": "^4.0.2" } }, "sha512-wbQ9jQKtTjqHOYvMrgINWKuP05Q0cXe/Rze2c2gOAakztE34tVzT4aRvvooUR2l+JGWf/hL26nmHXJ4/Urkqiw=="],
+    "@effect/platform-bun": ["@effect/platform-bun@4.0.3", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.3" }, "peerDependencies": { "effect": "^4.0.3" } }, "sha512-Pl2TXjRTRRvGxtGfYWW8L+B1qkZo8mEx7Itvo2lUd15OQPZGDE111S6JDm9EgGfDK3BUz3sbyNeQD687GQm2iQ=="],
 
     "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.3", "", { "dependencies": { "@types/ws": "^8.18.2", "ws": "^8.22.0" }, "peerDependencies": { "effect": "^4.0.3" } }, "sha512-5srkJfmWklWSgwZwlkMeTXobfNtxuwuTCvY9JWdPXRv/PBXAe5kKSptzRxT778oFFsaE9IMI8X61pvkifT9Eug=="],
 
