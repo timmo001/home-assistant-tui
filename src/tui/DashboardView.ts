@@ -112,8 +112,8 @@ export class DashboardView extends ConnectedView {
 
     this.onAreaSelect = options.onAreaSelect;
 
-    this.root.remove(this.filterBar.id);
-    this.root.remove(this.menuList.id);
+    this.root.remove(this.filterBar);
+    this.root.remove(this.menuList);
 
     this.scroll = new ScrollBoxRenderable(renderer, {
       id: "dashboard-scroll",

@@ -486,14 +486,14 @@ export class ServiceFormPopup {
 
     // Remove all children from the fields container
     for (const child of this.fieldsContainer.getChildren()) {
-      this.fieldsContainer.remove(child.id);
+      this.fieldsContainer.remove(child);
     }
   }
 
   /** Remove the popup from the render tree */
   destroy(): void {
     this.hide();
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 }
 

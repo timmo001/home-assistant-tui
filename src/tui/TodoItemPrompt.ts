@@ -188,7 +188,7 @@ export class TodoItemPrompt {
 
   destroy(): void {
     this.hide();
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 
   private submit(): void {

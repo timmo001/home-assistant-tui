@@ -226,7 +226,7 @@ export abstract class ConnectedView {
 
   destroy(): void {
     this.cleanup();
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 
   // ── Protected helpers ─────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export abstract class ConnectedView {
   /** Hide the status text (call when populating the menu list with real items). */
   protected hideStatus(): void {
     if (this.statusVisible) {
-      this.root.remove(this.statusText.id);
+      this.root.remove(this.statusText);
       this.statusVisible = false;
     }
   }

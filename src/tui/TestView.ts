@@ -180,6 +180,6 @@ export class TestView {
   }
 
   destroy(): void {
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 }
