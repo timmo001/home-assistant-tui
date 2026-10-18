@@ -2,10 +2,7 @@
 
 /** Live state of the Home Assistant WebSocket connection */
 export type ConnectionStatus =
-  | "connecting"
-  | "connected"
-  | "disconnected"
-  | "error";
+  "connecting" | "connected" | "disconnected" | "error";
 
 /**
  * Snapshot of connection state shown in the header bar.

@@ -766,7 +766,7 @@ export class MenuList extends ScrollBoxRenderable {
     let next = this._selectedIndex;
 
     // Move in the given direction, skipping group headers
-    for (let steps = Math.abs(delta); steps > 0; ) {
+    for (let steps = Math.abs(delta); steps > 0;) {
       next += direction;
 
       if (this._wrapSelection) {
