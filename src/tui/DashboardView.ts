@@ -92,8 +92,7 @@ export class DashboardView extends ConnectedView {
   private entityRegistry: EntityRegistryEntry[] = [];
   private deviceMap = new Map<string, DeviceRegistryEntry>();
   private onAreaSelect:
-    | ((areaId: string, areaName: string) => void)
-    | undefined;
+    ((areaId: string, areaName: string) => void) | undefined;
 
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private entityActions: EntityActionHandler;
