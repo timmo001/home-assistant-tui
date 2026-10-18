@@ -73,8 +73,7 @@ function makeCommandRunner(
     runSuspended: Effect.fn("CommandRunner.runSuspended")((cmd, wait) =>
       Effect.gen(function* () {
         log(`Suspending for: ${cmd}`);
-        renderer.suspend();
-        renderer.currentRenderBuffer.clear();
+        yield* Effect.promise(() => renderer.suspend());
 
         const cols = process.stdout.columns || 80;
         const label = ` ${cmd} `;
@@ -116,12 +115,14 @@ function makeCommandRunner(
         }
       }).pipe(
         Effect.ensuring(
-          Effect.sync(() => {
-            renderer.currentRenderBuffer.clear();
-            renderer.resume();
-            renderer.requestRender();
-            log("Resumed after command");
-          }),
+          Effect.promise(() => renderer.resume()).pipe(
+            Effect.andThen(
+              Effect.sync(() => {
+                renderer.requestRender();
+                log("Resumed after command");
+              }),
+            ),
+          ),
         ),
         Effect.mapError((cause) => new CommandError({ command: cmd, cause })),
       ),

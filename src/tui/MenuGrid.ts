@@ -234,14 +234,14 @@ export class MenuGrid {
 
   private clearContent(): void {
     for (const tile of this.tiles.values()) {
-      this.scroll.remove(tile.box.id);
+      this.scroll.remove(tile.box);
     }
 
     this.tiles.clear();
 
     for (const section of this.sections) {
       if (section.heading) {
-        this.scroll.remove(section.heading.box.id);
+        this.scroll.remove(section.heading.box);
       }
     }
   }
@@ -298,8 +298,6 @@ export class MenuGrid {
   }
 
   private getTileLayouts(): Array<TileLayout> {
-    this.scroll.updateFromLayout();
-
     const layouts: Array<TileLayout> = [];
 
     for (

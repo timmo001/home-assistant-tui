@@ -188,7 +188,7 @@ export class SubmenuView {
     // Reset filter bar (new menu = no filter)
     this.filterBar.content = formatFilterBar(this.theme, "");
     // Recreate the menu list with new items
-    this.root.remove(this.menuList.id);
+    this.root.remove(this.menuList);
     this.menuList = this.createMenuList(items);
     this.root.insertBefore(this.menuList, this.helpBar);
     this.menuList.focus();
@@ -249,6 +249,6 @@ export class SubmenuView {
 
   /** Remove the submenu view from the render tree */
   destroy(): void {
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 }

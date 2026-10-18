@@ -184,6 +184,6 @@ export class ServiceMenuPopup {
   /** Remove the popup from the render tree */
   destroy(): void {
     this.hide();
-    this.renderer.root.remove(this.root.id);
+    this.renderer.root.remove(this.root);
   }
 }
