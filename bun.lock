@@ -5,7 +5,7 @@
     "": {
       "name": "home-assistant-tui",
       "dependencies": {
-        "@effect/platform-bun": "4.0.6",
+        "@effect/platform-bun": "4.0.7",
         "@opentui/core": "^0.6.0",
         "effect": "4.0.6",
         "fuse.js": "^7.3.0",
@@ -24,9 +24,9 @@
     },
   },
   "packages": {
-    "@effect/platform-bun": ["@effect/platform-bun@4.0.6", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.6" }, "peerDependencies": { "effect": "^4.0.6" } }, "sha512-RAsGcIVcqhV4aBiM07VnMeNWDyewp8WDwTdIUtiklUDBRtddDllYzPsTlsn+0gLdpdz2lGnMEOFzoNaNrcMfSA=="],
+    "@effect/platform-bun": ["@effect/platform-bun@4.0.7", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.7" }, "peerDependencies": { "effect": "^4.0.7" } }, "sha512-73cS+KQQ2rZEjuXgDLiDHe6uuF7Zu3VnHXW2QmFaVqY3CIfAt5t53KOkppXHE2F2oY+i6/P9cCb5357Mec7TAw=="],
 
-    "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.6", "", { "dependencies": { "@types/ws": "^8.18.2", "ws": "^8.22.0" }, "peerDependencies": { "effect": "^4.0.6" } }, "sha512-0PhyC4uG30xGtsajnxjkcBWfTjNRzUh4ZKl1Kvo/MNyCTb+W2O+fBzf7wCRCoqt+nLudiq4V7vX40Q8XIBuMaQ=="],
+    "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.7", "", { "dependencies": { "@types/ws": "^8.18.2", "ws": "^8.22.0" }, "peerDependencies": { "effect": "^4.0.7" } }, "sha512-uCeBJ00hliKQsb7gMfvyEXUL1XmUKQcRzKi1X8ISG0UxTDMAdPRigOyKDnKxUTxE5PoT4kxLHQvOxo6U405FGg=="],
 
     "@effect/tsgo": ["@effect/tsgo@0.62.0", "", { "optionalDependencies": { "@effect/tsgo-darwin-arm64": "0.62.0", "@effect/tsgo-darwin-x64": "0.62.0", "@effect/tsgo-linux-arm": "0.62.0", "@effect/tsgo-linux-arm64": "0.62.0", "@effect/tsgo-linux-x64": "0.62.0", "@effect/tsgo-win32-arm64": "0.62.0", "@effect/tsgo-win32-x64": "0.62.0" }, "bin": { "effect-tsgo": "dist/effect-tsgo.cjs" } }, "sha512-9RU41yXVSoq+HKD1MsmfYH+iQ5wYjqD6rTMLPXqweHGl37wzXRUoGL7ri0DuO1sSAVd/XofDY5VTMhTMv296Xg=="],
 
