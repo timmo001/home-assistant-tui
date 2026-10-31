@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@effect/platform-bun": "4.1.1",
-    "@opentui/core": "^0.6.0",
+    "@opentui/core": "^0.8.0",
     "effect": "4.1.1",
     "fuse.js": "^7.3.0",
     "home-assistant-js-websocket": "^9.6.0",
