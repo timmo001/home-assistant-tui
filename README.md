@@ -1,5 +1,8 @@
 # Home Assistant TUI
 
+> [!NOTE]
+> This project is on hold for now, and the repository is archived. It may come back later.
+
 A terminal UI for [Home Assistant](https://www.home-assistant.io/), built with [OpenTUI](https://github.com/ArcticGlacier/opentui), [Effect](https://effect.website), and [Fuse.js](https://www.fusejs.io/).
 
 ## Features
